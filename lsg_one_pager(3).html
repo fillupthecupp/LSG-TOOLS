@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LSG One Pager Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f7f6f4;--surface:#fff;--surface2:#f4f3f1;--border:#e5e3df;--border2:#d1cfc9;
+  --text:#1a1917;--muted:#6b6864;--dim:#a8a5a1;--accent:#1a1917;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;--green-text:#15803d;
+  --amber:#b45309;--amber-bg:#fffbeb;--amber-border:#fde68a;--amber-text:#92400e;
+  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;--red-text:#991b1b;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;--blue-border:#bfdbfe;--blue-text:#1e40af;
+  --r:8px;--r-sm:5px;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --sh-lg:0 4px 20px rgba(0,0,0,.09);
+}
+body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── SHELL ── */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--sh);}
+.hdr-brand{display:flex;align-items:center;gap:10px;}
+.brand-mk{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0;}
+.brand-nm{font-size:15px;font-weight:600;}
+.brand-sb{font-size:10px;color:var(--dim);margin-top:1px;}
+.api-bar{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 10px;}
+.api-bar label{font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;}
+.api-bar input{background:transparent;border:none;outline:none;font-size:11px;color:var(--text);width:180px;}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .2s;}
+.api-dot.ok{background:var(--green);}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r-sm);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#2d2b28;}
+.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+.btn-outline:hover{background:var(--surface2);}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#15803d;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+.wrap{max-width:1400px;margin:0 auto;padding:20px 24px;}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:16px;}
+.uz-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.uz-title{font-size:13px;font-weight:600;margin-bottom:10px;}
+.uz-hint{font-size:11px;color:var(--dim);margin-top:2px;}
+.file-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:var(--text);}
+.file-pill .rm{cursor:pointer;color:var(--dim);font-size:14px;line-height:1;margin-left:2px;}
+.file-pill .rm:hover{color:var(--red);}
+.status-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r-sm);font-size:12px;margin-top:10px;display:none;}
+.status-bar.show{display:flex;}
+.status-bar.loading{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber-text);}
+.status-bar.success{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green-text);}
+.status-bar.error{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red-text);}
+.spin{width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;display:none;}
+.prog-bar.show{display:block;}
+.prog-fill{height:100%;background:var(--accent);width:0%;transition:width .5s ease;}
+
+/* ── ACTIONS BAR ── */
+.actions-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;margin-bottom:16px;box-shadow:var(--sh);}
+.ab-left{display:flex;align-items:center;gap:8px;}
+.ab-right{display:flex;align-items:center;gap:8px;}
+
+/* ── ONE PAGER CANVAS ── */
+#one-pager-canvas{display:none;}
+#one-pager-canvas.vis{display:block;}
+
+/* ── THE ONE PAGER ITSELF ── */
+.op{background:#fff;font-family:'DM Sans',sans-serif;font-size:10px;color:#111;width:100%;border:1px solid #d1cfc9;border-radius:6px;overflow:hidden;box-shadow:var(--sh-lg);}
+
+/* Header strip */
+.op-head{padding:8px 12px 6px;border-bottom:2px solid #111;}
+/* Row 1: title + opportunity description side by side */
+.op-head-top{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #e5e3df;}
+.op-head-title{}
+.op-name{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.1;}
+.op-addr{font-size:10px;color:#555;margin-top:1px;}
+.op-mode{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#dc2626;border:1px solid #fecaca;border-radius:2px;padding:1px 5px;margin-top:3px;}
+.op-head-desc{display:flex;align-items:baseline;gap:8px;}
+.op-head-desc-lbl{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#111;color:#fff;padding:2px 6px;border-radius:2px;white-space:nowrap;flex-shrink:0;}
+.op-head-desc-body{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.op-head-desc-text{font-size:9px;color:#333;line-height:1.45;}
+.op-head-kpis{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+.op-head-kpi-tag{font-size:7.5px;font-weight:600;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:2px;padding:1px 5px;white-space:nowrap;}
+/* Row 2: Property / Transaction / Scorecard boxes */
+.op-head-bottom{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-items:start;}
+.op-hbox{border:1px solid #e5e3df;border-radius:3px;overflow:hidden;}
+.op-hbox-lbl{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#111;color:#fff;padding:2px 6px;}
+.op-hbox-body{padding:4px 6px;}
+.op-hkv{display:flex;justify-content:space-between;gap:4px;padding:1px 0;font-size:9px;border-bottom:1px solid #f0eeeb;}
+.op-hkv:last-child{border-bottom:none;}
+.op-hk{color:#777;}
+.op-hv{font-weight:600;color:#111;text-align:right;}
+
+/* Main grid */
+.op-body{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.5fr;gap:6px;padding:6px 8px;}
+.op-col{}
+.op-section{border:1px solid #e5e3df;border-radius:3px;overflow:hidden;margin-bottom:5px;}
+.op-section-hdr{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#111;color:#fff;padding:2px 6px;}
+.op-section-body{padding:4px 6px;}
+.op-kv{display:flex;justify-content:space-between;gap:4px;padding:1.5px 0;font-size:9px;border-bottom:1px solid #f4f3f1;}
+.op-kv:last-child{border-bottom:none;}
+.op-kv.indent{padding-left:8px;}
+.op-kv.bold .op-k,.op-kv.bold .op-v{font-weight:700;}
+.op-k{color:#666;flex-shrink:0;max-width:60%;}
+.op-v{font-weight:500;color:#111;text-align:right;flex:1;}
+.op-v.green{color:#16a34a;font-weight:700;}
+.op-v.red{color:#dc2626;font-weight:700;}
+.op-v.blue{color:#1d4ed8;font-weight:700;}
+.op-kv.section-sep{border-top:1px solid #e5e3df;margin-top:2px;padding-top:3px;}
+.op-dual{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.op-dual-hdr{font-size:7.5px;text-align:center;color:#888;font-weight:600;padding:1px 0;}
+.op-divider{width:1px;background:#e5e3df;}
+
+/* Scorecard grades */
+.op-grades{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:4px 6px;}
+.op-grade-item{text-align:center;}
+.op-grade-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.07em;color:#777;font-weight:600;margin-bottom:2px;}
+.op-grade-val{font-size:13px;font-weight:700;padding:1px 0;}
+.grade-A,.grade-A-{color:#16a34a;}
+.grade-B,.grade-B-,.grade-B-plus{color:#1d4ed8;}
+.grade-C,.grade-C-,.grade-C-plus{color:#b45309;}
+
+/* Tenant tables */
+.op-tbl{width:100%;border-collapse:collapse;font-size:8.5px;}
+.op-tbl th{background:#1a1917;color:#fff;padding:2px 4px;text-align:left;font-weight:600;font-size:7.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+.op-tbl th.r{text-align:right;}
+.op-tbl td{padding:2px 4px;border-bottom:1px solid #f0eeeb;color:#111;white-space:nowrap;}
+.op-tbl td.r{text-align:right;}
+.op-tbl td.muted{color:#777;}
+.op-tbl tr.total td{font-weight:700;background:#f4f3f1;border-top:1px solid #d1cfc9;}
+.op-tbl tr.sub-hdr td{background:#374151;color:#fff;font-weight:600;font-size:7.5px;text-transform:uppercase;}
+
+/* Cash flows — full width */
+.op-cf-wrap{padding:0 8px 6px;}
+.op-cf-tbl{width:100%;border-collapse:collapse;font-size:8px;}
+.op-cf-tbl th{background:#111;color:#fff;padding:2px 5px;text-align:right;font-weight:600;font-size:7.5px;white-space:nowrap;}
+.op-cf-tbl th:first-child{text-align:left;min-width:120px;}
+.op-cf-tbl td{padding:1.5px 5px;border-bottom:1px solid #f4f3f1;text-align:right;color:#111;white-space:nowrap;font-size:8px;}
+.op-cf-tbl td:first-child{text-align:left;color:#555;}
+.op-cf-tbl tr.cf-hdr td{background:#374151;color:#fff;font-weight:700;font-size:7.5px;text-transform:uppercase;}
+.op-cf-tbl tr.cf-bold td{font-weight:700;background:#fafafa;}
+.op-cf-tbl tr.cf-total td{font-weight:700;background:#f0eeeb;border-top:1px solid #d1cfc9;}
+.op-cf-tbl tr.cf-metric td{color:#16a34a;font-weight:700;}
+
+/* Bottom section: demo + expense + sensitivity + tenant use */
+.op-bottom{display:grid;grid-template-columns:1fr 1fr 1.1fr 1fr;gap:6px;padding:0 8px 8px;}
+
+/* Sensitivity */
+.op-sens{width:100%;border-collapse:collapse;font-size:8px;}
+.op-sens th{background:#374151;color:#fff;padding:2px 4px;font-weight:600;font-size:7.5px;text-align:center;}
+.op-sens th:first-child{text-align:left;}
+.op-sens td{padding:1.5px 4px;border:1px solid #e5e3df;text-align:center;font-size:8px;}
+.op-sens tr.current td{background:#fffbeb;font-weight:700;}
+
+/* KPI bar */
+.op-kpi-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:4px 6px;}
+.op-kpi{border:1px solid #e5e3df;border-radius:3px;padding:4px 6px;text-align:center;}
+.op-kpi-l{font-size:7.5px;text-transform:uppercase;letter-spacing:.07em;color:#777;font-weight:600;}
+.op-kpi-v{font-size:13px;font-weight:700;color:#111;margin-top:1px;}
+.op-kpi-s{font-size:7.5px;color:#777;margin-top:0;}
+
+/* Opportunity description */
+.op-desc{font-size:9px;color:#444;line-height:1.5;padding:4px 6px;}
+.op-kpis-list{padding:4px 6px;}
+.op-kpis-list li{font-size:9px;color:#111;margin-bottom:2px;padding-left:10px;position:relative;}
+.op-kpis-list li::before{content:"•";position:absolute;left:0;color:#16a34a;}
+
+/* Footer */
+.op-footer{display:flex;justify-content:space-between;align-items:center;padding:4px 12px;border-top:1px solid #e5e3df;font-size:8px;color:#999;background:#fafafa;}
+
+/* ── MULTI-FILE CARDS ── */
+.file-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px;min-width:200px;max-width:280px;}
+.file-card-icon{font-size:16px;flex-shrink:0;}
+.file-card-info{flex:1;min-width:0;}
+.file-card-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-card-type{margin-top:3px;}
+.file-type-select{font-size:10px;font-weight:600;border:1px solid var(--border2);border-radius:3px;padding:2px 5px;background:var(--surface);color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;outline:none;}
+.file-type-select:focus{border-color:var(--accent);}
+.file-card-rm{cursor:pointer;color:var(--dim);font-size:16px;line-height:1;flex-shrink:0;padding:0 2px;}
+.file-card-rm:hover{color:var(--red);}
+
+/* ── GAP PANEL ── */
+.gap-panel{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r);padding:10px 14px;margin-bottom:16px;display:none;}
+.gap-panel.vis{display:block;}
+.gap-panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.gap-panel-title{font-size:11px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:5px;}
+.gap-list{display:flex;flex-wrap:wrap;gap:5px;}
+.gap-tag{font-size:9px;font-weight:600;background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:3px;padding:2px 7px;cursor:pointer;transition:background .12s;}
+.gap-tag:hover{background:#fde68a;}
+
+/* ── STRUCTURED EDIT FORM ── */
+.ef-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.ef-tab{padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);white-space:nowrap;}
+.ef-tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.ef-tab:hover{color:var(--text);}
+.ef-pane{display:none;}
+.ef-pane.active{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;}
+.ef-pane.wide{grid-template-columns:1fr;}
+.ef-field{display:flex;flex-direction:column;gap:3px;}
+.ef-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.ef-input{padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;}
+.ef-input:focus{border-color:var(--accent);}
+.ef-input.missing{border-color:#fde68a;background:#fffbeb;}
+.ef-input.missing::placeholder{color:#b45309;}
+.ef-section-hdr{grid-column:span 2;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding-top:4px;border-top:1px solid var(--border);margin-top:4px;}
+.ef-json-wrap{font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:10px;outline:none;resize:vertical;width:100%;height:360px;}
+@media print{
+  body{background:#fff;}
+  .hdr,.upload-zone,.actions-bar,.uz-title{display:none!important;}
+  .wrap{padding:0;max-width:100%;}
+  #one-pager-canvas{display:block!important;}
+  .op{border:none;box-shadow:none;border-radius:0;}
+  @page{size:landscape;margin:8mm;}
+}
+
+/* ── LAYOUT EDITOR ── */
+.le-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.le-overlay.open{display:flex;}
+.le-modal{background:#fff;border-radius:10px;width:100%;max-width:1100px;box-shadow:0 8px 40px rgba(0,0,0,.2);display:flex;flex-direction:column;}
+.le-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.le-title{font-size:15px;font-weight:600;}
+.le-subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+.le-body{padding:16px 18px;overflow-y:auto;max-height:75vh;}
+.le-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;}
+.le-cols{display:grid;grid-template-columns:repeat(4,1fr) 0.8fr 0.6fr;gap:10px;}
+.le-col-wrap{display:flex;flex-direction:column;gap:6px;}
+.le-col-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;background:var(--accent);color:#fff;padding:4px 10px;border-radius:4px;text-align:center;}
+.le-col-hdr.fullwidth{background:#374151;}
+.le-col-hdr.hidden-col{background:#9ca3af;}
+.le-dropzone{min-height:60px;border:1.5px dashed var(--border2);border-radius:6px;padding:4px;display:flex;flex-direction:column;gap:4px;transition:background .15s,border-color .15s;}
+.le-dropzone.drag-over{background:var(--blue-bg);border-color:var(--blue);}
+.le-card{background:#fff;border:1px solid var(--border);border-radius:5px;padding:6px 10px;cursor:grab;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;user-select:none;transition:box-shadow .15s,transform .1s;}
+.le-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);transform:translateY(-1px);}
+.le-card.dragging{opacity:.4;cursor:grabbing;}
+.le-card-icon{font-size:14px;flex-shrink:0;}
+.le-card-lbl{flex:1;}
+.le-card-grip{color:var(--dim);font-size:12px;flex-shrink:0;}
+
+/* Column width picker */
+.le-width-picker{display:flex;align-items:center;gap:3px;padding:4px 2px;flex-wrap:wrap;}
+.le-width-btn{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:all .12s;}
+.le-width-btn:hover{background:var(--blue-bg);border-color:var(--blue);color:var(--blue-text);}
+.le-width-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.le-width-hint{font-size:9px;color:var(--green);font-weight:600;margin-left:2px;}
+
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="brand-mk">L</div>
+    <div>
+      <div class="brand-nm">Lightstone</div>
+      <div class="brand-sb">One Pager Generator</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <a href="lsg_ingest.html" style="font-size:11px;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:4px;border:1px solid var(--border);transition:all .15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border2)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Deal Ingest →</a>
+    <div class="api-bar">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" oninput="checkKey()">
+      <div class="api-dot" id="apiDot"></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="upload-zone">
+    <div class="uz-title">Upload Source Documents</div>
+    <div id="file-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;min-height:0;"></div>
+    <div class="uz-row">
+      <label class="btn btn-outline" style="cursor:pointer;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Add File
+        <input type="file" id="src-file" accept=".pdf,.xlsx,.xls" style="display:none" onchange="fileSelected(event)" multiple>
+      </label>
+      <button class="btn btn-primary" id="extract-btn" onclick="runExtract()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Extract & Generate
+      </button>
+      <button class="btn btn-ghost" id="demo-btn" onclick="loadDemo()">Load Demo (OKC Outlets)</button>
+    </div>
+    <div class="prog-bar" id="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="status-bar" id="status-bar"><div class="spin" id="status-spin" style="display:none"></div><span id="status-msg"></span></div>
+    <div style="margin-top:8px;font-size:10px;color:var(--dim);">Add up to 3 files: OM (PDF), T12 (PDF/Excel), Rent Roll (PDF/Excel). Tag each file type — AI cross-references all documents in one extraction pass.</div>
+  </div>
+
+  <div class="actions-bar" id="actions-bar" style="display:none;">
+    <div class="ab-left">
+      <span id="op-deal-name" style="font-weight:600;font-size:14px;"></span>
+      <span id="op-extracted-at" style="font-size:11px;color:var(--muted);"></span>
+    </div>
+    <div class="ab-right">
+      <button class="btn btn-ghost" onclick="openLayoutEditor()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Layout
+      </button>
+      <button class="btn btn-ghost" onclick="editData()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit Data
+      </button>
+      <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+      <button class="btn btn-green" onclick="printOP()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Export PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- GAP PANEL -->
+  <div class="gap-panel" id="gap-panel">
+    <div class="gap-panel-hdr">
+      <div class="gap-panel-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="gap-count"></span> fields not found in source — click any to fill
+      </div>
+      <span style="font-size:10px;color:#92400e;cursor:pointer;text-decoration:underline;" onclick="editData()">Edit all fields</span>
+    </div>
+    <div class="gap-list" id="gap-list"></div>
+  </div>
+
+  <div id="one-pager-canvas"></div>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:10px;width:100%;max-width:860px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.15);">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <div style="font-size:16px;font-weight:600;">Edit One Pager Data</div>
+      <button onclick="closeEdit()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--dim);padding:2px 6px;">×</button>
+    </div>
+    <div id="edit-body" style="padding:20px;overflow-y:auto;flex:1;"></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;">
+      <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdits()">Apply Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KKEY='lsg_api_key';
+const OPKEY='lsg_op_data_v1';
+let opData=null;
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function getKey(){return document.getElementById('apiKey').value.trim();}
+function checkKey(){
+  const k=getKey();
+  document.getElementById('apiDot').className='api-dot'+(k.startsWith('sk-')?' ok':'');
+  try{if(k.startsWith('sk-'))localStorage.setItem(KKEY,k);}catch{}
+}
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// pct(): smart formatter — if value is already a % string ("10.2%"), pass through.
+// If it's a raw decimal <=1.5 (e.g. 0.756 from sources_uses.senior_debt_pct), multiply by 100.
+// If it's already a whole number string like "10.2", just append %.
+function pct(v,dec=1){
+  if(v==null||v===''||v==='—')return'—';
+  const s=String(v).trim();
+  if(s.endsWith('%'))return pctRaw(s,dec); // already formatted
+  const n=parseFloat(s);
+  if(isNaN(n))return s;
+  // Raw decimal (e.g. 0.756 from JSON) vs whole number (e.g. 75.4 or 10.2)
+  const val=Math.abs(n)<=1.5?n*100:n;
+  return val.toFixed(dec)+'%';
+}
+function pctRaw(v,dec=1){if(v==null||v===''||v==='—')return'—';const n=parseFloat(String(v).replace(/%/g,''));return isNaN(n)?String(v):n.toFixed(dec)+'%';}
+function cur(v,dec=0){if(v==null||v===''||v==='—')return'—';const n=parseFloat(String(v).replace(/[$,]/g,''));if(isNaN(n))return String(v);return'$'+n.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
+function curM(v){if(v==null||v===''||v==='—')return'—';const n=parseFloat(String(v).replace(/[$,M]/g,''));if(isNaN(n))return String(v);if(Math.abs(n)>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return cur(n);}
+function mul(v){if(v==null||v===''||v==='—')return'—';const n=parseFloat(String(v).replace(/x/gi,''));return isNaN(n)?String(v):n.toFixed(2)+'x';}
+function v(obj,...keys){for(const k of keys){if(obj&&obj[k]!=null&&obj[k]!==''&&obj[k]!=='—')return obj[k];}return'—';}
+function setStatus(type,msg){
+  const el=document.getElementById('status-bar');
+  const sp=document.getElementById('status-spin');
+  el.className='status-bar'+(type?' show '+type:'');
+  sp.style.display=type==='loading'?'flex':'none';
+  document.getElementById('status-msg').textContent=msg||'';
+}
+function setProgress(pct){
+  const bar=document.getElementById('prog-bar');
+  bar.className='prog-bar show';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  if(pct>=100)setTimeout(()=>bar.className='prog-bar',600);
+}
+function gradeClass(g){
+  if(!g||g==='—')return'';
+  const s=String(g).trim();
+  if(s.startsWith('A'))return'grade-A';
+  if(s.startsWith('B'))return'grade-B';
+  if(s.startsWith('C'))return'grade-C';
+  return'';
+}
+
+// ── MULTI-FILE HANDLING ────────────────────────────────────────────────────
+const FILE_TYPES = ['OM','T12','Rent Roll','Excel Model','Other'];
+let srcFiles = []; // [{file, type}]
+
+function fileSelected(e){
+  const newFiles = [...e.target.files];
+  newFiles.forEach(f => {
+    if(srcFiles.length >= 3){ setStatus('error','Max 3 files. Remove one first.'); return; }
+    if(srcFiles.find(x=>x.file.name===f.name)) return; // dedupe
+    // Auto-detect type from filename
+    const n = f.name.toLowerCase();
+    let type = 'OM';
+    if(n.includes('t12')||n.includes('trailing')) type='T12';
+    else if(n.includes('rent')||n.includes('roll')||n.includes('rr')) type='Rent Roll';
+    else if(n.includes('.xlsx')||n.includes('.xls')) type='Excel Model';
+    srcFiles.push({file:f, type});
+  });
+  e.target.value='';
+  renderFileList();
+}
+
+function renderFileList(){
+  const list = document.getElementById('file-list');
+  list.innerHTML = srcFiles.map((item,i) => {
+    const isPDF = item.file.name.toLowerCase().endsWith('.pdf');
+    const icon = isPDF ? '📄' : '📊';
+    const opts = FILE_TYPES.map(t=>`<option${t===item.type?' selected':''}>${t}</option>`).join('');
+    return `<div class="file-card">
+      <span class="file-card-icon">${icon}</span>
+      <div class="file-card-info">
+        <div class="file-card-name" title="${esc(item.file.name)}">${esc(item.file.name)}</div>
+        <div class="file-card-type">
+          <select class="file-type-select" onchange="setFileType(${i},this.value)">${opts}</select>
+        </div>
+      </div>
+      <span class="file-card-rm" onclick="removeFile(${i})">×</span>
+    </div>`;
+  }).join('');
+  document.getElementById('extract-btn').disabled = srcFiles.length===0 || !getKey().startsWith('sk-');
+}
+
+function setFileType(i, type){ srcFiles[i].type = type; renderFileList(); }
+function removeFile(i){ srcFiles.splice(i,1); renderFileList(); if(srcFiles.length===0) setStatus('',''); }
+function clearFile(){ srcFiles=[]; renderFileList(); }
+
+// ── EXTRACTION SYSTEM PROMPT ──────────────────────────────────────────────
+const EXTRACT_SYSTEM=`You are a senior acquisitions analyst at Lightstone Group. Extract structured deal data from the uploaded document (OM, Excel one pager, T12, or rent roll).
+
+Return ONLY a valid JSON object — no markdown, no code fences, no preamble. Use null for any field not found.
+
+Return this exact structure:
+{
+  "deal_name": "",
+  "address": "",
+  "mode": "CONSERVATIVE",
+  "property": {
+    "type": "",
+    "size_sf": "",
+    "acreage": "",
+    "occupancy": "",
+    "tenant_count": "",
+    "walt": "",
+    "vintage": "",
+    "buildings": "",
+    "class": ""
+  },
+  "transaction": {
+    "status": "",
+    "strategy": "",
+    "seller": "",
+    "sourcing": ""
+  },
+  "scorecard": {
+    "overall_grade": "",
+    "market_grade": "",
+    "property_grade": "",
+    "location_grade": "",
+    "business_plan_grade": "",
+    "description": "",
+    "kpis": []
+  },
+  "returns": {
+    "going_in_yield_cost": "",
+    "going_in_cap": "",
+    "stable_yield_y11": "",
+    "avg_yield_5yr": "",
+    "avg_yield_10yr": "",
+    "hold_period_1": "5",
+    "hold_period_2": "10",
+    "unlevered_profit_5": "",
+    "unlevered_profit_10": "",
+    "levered_profit_5": "",
+    "levered_profit_10": "",
+    "irr_unlevered_5": "",
+    "irr_unlevered_10": "",
+    "irr_levered_5": "",
+    "irr_levered_10": "",
+    "irr_net_5": "",
+    "irr_net_10": "",
+    "net_profit_5": "",
+    "net_profit_10": "",
+    "moic_5": "",
+    "moic_10": "",
+    "coc_pre_refi_5": "",
+    "coc_pre_refi_10": ""
+  },
+  "valuation": {
+    "stable_value_psf_today": "",
+    "stable_value_psf_5yr": "",
+    "stable_value_psf_10yr": "",
+    "stable_cap_rate": "",
+    "stable_cap_expansion": "",
+    "exit_cap_5yr": "",
+    "exit_cap_10yr": "",
+    "mtm_exit_cap_5yr": ""
+  },
+  "sources_uses": {
+    "purchase_price": "",
+    "purchase_price_psf": "",
+    "closing_costs": "",
+    "reserves_at_close": "",
+    "total_at_closing": "",
+    "ticl_costs": "",
+    "capex_costs": "",
+    "total_post_closing": "",
+    "total_uses": "",
+    "senior_debt_initial": "",
+    "senior_debt_pct": "",
+    "lightstone_initial": "",
+    "lightstone_pct": "",
+    "total_initial": "",
+    "lsg_equity_future": "",
+    "total_fully_funded": ""
+  },
+  "capital_sources": {
+    "proceeds_at_close": "",
+    "ltpp": "",
+    "ltc": "",
+    "ltv": "",
+    "fixed_floating": "",
+    "benchmark": "",
+    "index": "",
+    "index_buffer": "",
+    "spread": "",
+    "effective_rate": "",
+    "rate_cap": "",
+    "term_years": "",
+    "io_period_years": "",
+    "amortization": "",
+    "debt_yield": "",
+    "dscr": ""
+  },
+  "top_tenants": [
+    {"name":"","move_in":"","national":"","in_place_rent":"","market_rent":"","mtm_pct":"","exp_date":"","options":"","sf":"","sf_pct":"","rev_pct":"","sales_psf":"","health_ratio":""}
+  ],
+  "by_size": [
+    {"category":"Small Shop <5k","national_pct":"","local_pct":"","in_place_rent":"","market_rent":"","mtm_pct":"","walt":"","sf":"","sf_pct":"","rev_pct":"","sales_psf":"","health_ratio":""}
+  ],
+  "market": {
+    "submarket": "",
+    "gs_grade": "",
+    "avg_rent_growth_10yr": "",
+    "avg_rent_growth_20yr": "",
+    "inventory_total": "",
+    "vacancy_total": "",
+    "market_growth_2026": "",
+    "market_growth_2027": "",
+    "market_growth_2028": "",
+    "market_growth_2029": "",
+    "market_growth_2030": "",
+    "lsg_uw_growth": ""
+  },
+  "income_assumptions": {
+    "general_vacancy": "",
+    "credit_loss": "",
+    "annual_escalations": "",
+    "mla_term_small": "",
+    "mla_renew_prob_small": "",
+    "mla_market_rent_small": "",
+    "mla_ti_new_small": "",
+    "mla_lc_new_small": "",
+    "mla_free_rent_new": ""
+  },
+  "cash_flows": {
+    "years": ["Y1","Y2","Y3","Y4","Y5","Y6","Y7","Y8","Y9","Y10"],
+    "period_ending": [],
+    "gross_potential_rent": [],
+    "opex_reimbursements": [],
+    "vacancy_loss": [],
+    "effective_gross_income": [],
+    "other_income": [],
+    "total_revenue": [],
+    "operating_expenses": [],
+    "noi": [],
+    "capex": [],
+    "tenant_improvements": [],
+    "leasing_commissions": [],
+    "total_capex_leasing": [],
+    "cfbds": [],
+    "debt_service": [],
+    "cfads": [],
+    "yield_on_cost": [],
+    "cash_on_cash": [],
+    "noi_growth": []
+  },
+  "sensitivity": [
+    {"price":"$74M","irr":"","coc_wo_am":"","coc_w_am":""},
+    {"price":"$76M","irr":"","coc_wo_am":"","coc_w_am":""},
+    {"price":"$78M","irr":"","coc_wo_am":"","coc_w_am":""},
+    {"price":"$80M","irr":"","coc_wo_am":"","coc_w_am":"","current":true},
+    {"price":"$82M","irr":"","coc_wo_am":"","coc_w_am":""},
+    {"price":"$84M","irr":"","coc_wo_am":"","coc_w_am":""},
+    {"price":"$86M","irr":"","coc_wo_am":"","coc_w_am":""}
+  ],
+  "demographics": {
+    "pop_30": "",
+    "pop_50": "",
+    "pop_70": "",
+    "hh_30": "",
+    "hh_50": "",
+    "hh_70": "",
+    "hh_med_inc_30": "",
+    "hh_med_inc_50": "",
+    "hh_med_inc_70": "",
+    "med_home_val_30": "",
+    "med_home_val_50": "",
+    "med_home_val_70": "",
+    "crime_vs_natl_30": "",
+    "traffic_streets": []
+  },
+  "expenses": {
+    "ret_insurance_psf": "",
+    "cam_psf": "",
+    "management_pct": "",
+    "other_psf": "",
+    "capex_schedule": []
+  },
+  "tenant_use_type": [
+    {"rank":1,"type":"","rev_pct":"","sf_pct":""}
+  ]
+}`;
+
+// ── FILE CONTENT PREPARATION ───────────────────────────────────────────────
+// Claude's document API accepts PDF natively (base64 document block).
+// XLSX/XLS are NOT supported as document blocks — SheetJS converts all
+// sheets to CSV text, sent as a plain text content block instead.
+async function prepareFileContent(file){
+  const name=file.name.toLowerCase();
+  const isExcel=name.endsWith('.xlsx')||name.endsWith('.xls');
+
+  if(isExcel){
+    const ab=await file.arrayBuffer();
+    const wb=XLSX.read(ab,{type:'array'});
+    const parts=wb.SheetNames.map(sn=>{
+      const csv=XLSX.utils.sheet_to_csv(wb.Sheets[sn],{blankrows:false});
+      return`=== Sheet: ${sn} ===\n${csv}`;
+    });
+    const text=parts.join('\n\n');
+    return{type:'text',text:`Excel model content (all sheets as CSV):\n\n${text}`};
+  } else {
+    // PDF — send as native base64 document block
+    const b64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>{const s=String(r.result||'');res(s.includes(',')?s.split(',')[1]:s);};
+      r.onerror=rej;
+      r.readAsDataURL(file);
+    });
+    return{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}};
+  }
+}
+
+// ── RUN EXTRACTION ─────────────────────────────────────────────────────────
+async function runExtract(){
+  if(srcFiles.length===0)return;
+  if(!getKey().startsWith('sk-')){setStatus('error','Enter your Anthropic API key first.');return;}
+
+  setStatus('loading',`Reading ${srcFiles.length} file${srcFiles.length>1?'s':''}...`);
+  setProgress(10);
+  document.getElementById('extract-btn').disabled=true;
+
+  // Prepare all file content blocks
+  let contentBlocks = [];
+  try{
+    for(const item of srcFiles){
+      const block = await prepareFileContent(item.file);
+      // Prepend a text label so Claude knows which doc type each file is
+      contentBlocks.push({type:'text', text:`--- Document: ${item.file.name} (Type: ${item.type}) ---`});
+      contentBlocks.push(block);
+    }
+  }catch(e){
+    setStatus('error','Could not read file: '+e.message);
+    document.getElementById('extract-btn').disabled=false;
+    return;
+  }
+
+  const fileLabel = srcFiles.map(f=>`${f.type} (${f.file.name})`).join(', ');
+  setStatus('loading',`Extracting from ${fileLabel} — this takes ~20–40s...`);
+  setProgress(35);
+
+  contentBlocks.push({type:'text', text:'Extract all deal data from the above document(s) into the JSON structure specified. Multiple documents are provided — cross-reference them. If the same field appears in multiple documents and values conflict, prefer the T12 or Rent Roll over the OM (broker figures). Be thorough — pull every number including all 10 years of cash flows, all tenants, all sensitivity rows, all demographics.'});
+
+  let result;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:16000,
+        system:EXTRACT_SYSTEM,
+        messages:[{role:'user',content:contentBlocks}]
+      })
+    });
+    setProgress(75);
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data?.error?.message||`API error ${resp.status}`);
+    const raw=data.content?.find(b=>b.type==='text')?.text||'';
+    result=JSON.parse(raw.replace(/```json|```/g,'').trim());
+  }catch(e){
+    setStatus('error','Extraction failed: '+e.message);
+    document.getElementById('extract-btn').disabled=false;
+    setProgress(0);
+    return;
+  }
+
+  setProgress(100);
+  opData=result;
+  try{localStorage.setItem(OPKEY,JSON.stringify(opData));}catch{}
+  renderOnePager(opData);
+  setStatus('success',`Extracted from ${srcFiles.length} document${srcFiles.length>1?'s':''}. Review below — use Edit Data to fill any gaps.`);
+  document.getElementById('extract-btn').disabled=false;
+}
+
+// ── DEMO DATA ──────────────────────────────────────────────────────────────
+function loadDemo(){
+  opData=DEMO_DATA;
+  renderOnePager(opData);
+  setStatus('success','Demo loaded: OKC Outlets.');
+}
+
+// ── RENDER ONE PAGER ──────────────────────────────────────────────────────
+function renderOnePager(d){
+  const canvas=document.getElementById('one-pager-canvas');
+  canvas.innerHTML=buildOP(d);
+  canvas.className='vis';
+  document.getElementById('actions-bar').style.display='flex';
+  document.getElementById('op-deal-name').textContent=d.deal_name||d.address||'';
+  document.getElementById('op-extracted-at').textContent='Generated '+new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  renderGapPanel(d);
+}
+
+// ── GAP DETECTION ─────────────────────────────────────────────────────────
+const GAP_FIELDS = [
+  {path:'deal_name',               label:'Deal Name'},
+  {path:'address',                 label:'Address'},
+  {path:'property.type',           label:'Property Type'},
+  {path:'property.size_sf',        label:'Total SF'},
+  {path:'property.occupancy',      label:'Occupancy'},
+  {path:'property.walt',           label:'WALT'},
+  {path:'property.vintage',        label:'Vintage'},
+  {path:'transaction.seller',      label:'Seller'},
+  {path:'transaction.sourcing',    label:'Sourcing'},
+  {path:'scorecard.description',   label:'Opp. Description'},
+  {path:'returns.going_in_cap',    label:'Going-In Cap'},
+  {path:'returns.irr_levered_5',   label:'Levered IRR (5Y)'},
+  {path:'returns.moic_5',          label:'MOIC (5Y)'},
+  {path:'sources_uses.purchase_price', label:'Purchase Price'},
+  {path:'sources_uses.senior_debt_initial', label:'Senior Debt'},
+  {path:'capital_sources.effective_rate', label:'Effective Rate'},
+  {path:'capital_sources.dscr',    label:'DSCR'},
+  {path:'capital_sources.debt_yield', label:'Debt Yield'},
+  {path:'cash_flows.noi',          label:'NOI (CF)'},
+  {path:'market.submarket',        label:'Submarket'},
+  {path:'demographics.pop_50',     label:'Demographics'},
+];
+
+function getNestedVal(obj, path){
+  return path.split('.').reduce((o,k)=>o&&o[k]!=null?o[k]:null, obj);
+}
+
+function renderGapPanel(d){
+  const panel = document.getElementById('gap-panel');
+  const list  = document.getElementById('gap-list');
+  const count = document.getElementById('gap-count');
+
+  const gaps = GAP_FIELDS.filter(f => {
+    const val = getNestedVal(d, f.path);
+    return val===null || val==='' || val==='—' ||
+           (Array.isArray(val) && val.length===0);
+  });
+
+  if(gaps.length === 0){ panel.classList.remove('vis'); return; }
+
+  count.textContent = gaps.length;
+  list.innerHTML = gaps.map(f =>
+    `<span class="gap-tag" onclick="editData('${f.path}')" title="Click to fill">${f.label}</span>`
+  ).join('');
+  panel.classList.add('vis');
+}
+
+// ── STRUCTURED EDIT FORM ──────────────────────────────────────────────────
+function editData(focusPath=''){
+  if(!opData)return;
+  const d = opData;
+
+  // Build tab panes
+  const tabs = [
+    { id:'ef-deal',     label:'Deal',        fields:[
+      {key:'deal_name',path:'deal_name',label:'Deal Name'},
+      {key:'address',  path:'address',  label:'Address'},
+      {key:'mode',     path:'mode',     label:'Mode (CONSERVATIVE/AGGRESSIVE)'},
+    ]},
+    { id:'ef-prop',     label:'Property',    fields:[
+      {key:'type',     path:'property.type',         label:'Property Type'},
+      {key:'size_sf',  path:'property.size_sf',       label:'Size (SF)'},
+      {key:'acreage',  path:'property.acreage',       label:'Acreage'},
+      {key:'occupancy',path:'property.occupancy',     label:'Occupancy'},
+      {key:'tenant_count',path:'property.tenant_count',label:'Tenant Count'},
+      {key:'walt',     path:'property.walt',          label:'WALT'},
+      {key:'vintage',  path:'property.vintage',       label:'Vintage'},
+      {key:'buildings',path:'property.buildings',     label:'Buildings'},
+    ]},
+    { id:'ef-txn',      label:'Transaction', fields:[
+      {key:'status',   path:'transaction.status',   label:'Status'},
+      {key:'strategy', path:'transaction.strategy', label:'Strategy'},
+      {key:'seller',   path:'transaction.seller',   label:'Seller'},
+      {key:'sourcing', path:'transaction.sourcing', label:'Sourcing'},
+      {key:'description',path:'scorecard.description',label:'Opportunity Description',wide:true},
+    ]},
+    { id:'ef-returns',  label:'Returns',     fields:[
+      {key:'going_in_cap',   path:'returns.going_in_cap',    label:'Going-In Cap'},
+      {key:'going_in_yoc',   path:'returns.going_in_yield_cost',label:'Going-In YoC'},
+      {key:'irr_levered_5',  path:'returns.irr_levered_5',   label:'Levered IRR (5Y)'},
+      {key:'irr_levered_10', path:'returns.irr_levered_10',  label:'Levered IRR (10Y)'},
+      {key:'moic_5',         path:'returns.moic_5',          label:'MOIC (5Y)'},
+      {key:'moic_10',        path:'returns.moic_10',         label:'MOIC (10Y)'},
+      {key:'net_profit_5',   path:'returns.net_profit_5',    label:'Net Profit (5Y)'},
+      {key:'coc_pre_refi_5', path:'returns.coc_pre_refi_5',  label:'Avg CoC (5Y)'},
+    ]},
+    { id:'ef-debt',     label:'Debt',        fields:[
+      {key:'purchase_price',     path:'sources_uses.purchase_price',      label:'Purchase Price ($)'},
+      {key:'senior_debt_initial',path:'sources_uses.senior_debt_initial',  label:'Senior Debt ($)'},
+      {key:'lightstone_initial', path:'sources_uses.lightstone_initial',   label:'LSG Equity ($)'},
+      {key:'effective_rate',     path:'capital_sources.effective_rate',    label:'Effective Rate'},
+      {key:'term_years',         path:'capital_sources.term_years',        label:'Term (yrs)'},
+      {key:'io_period_years',    path:'capital_sources.io_period_years',   label:'IO Period (yrs)'},
+      {key:'ltc',                path:'capital_sources.ltc',               label:'LTC'},
+      {key:'ltv',                path:'capital_sources.ltv',               label:'LTV'},
+      {key:'debt_yield',         path:'capital_sources.debt_yield',        label:'Debt Yield'},
+      {key:'dscr',               path:'capital_sources.dscr',              label:'DSCR'},
+    ]},
+    { id:'ef-json',     label:'Raw JSON',    json:true },
+  ];
+
+  function fieldVal(path){
+    const v = getNestedVal(d, path);
+    if(v===null||v===undefined) return '';
+    if(Array.isArray(v)) return JSON.stringify(v);
+    return String(v);
+  }
+
+  function isMissing(path){
+    const v = getNestedVal(d, path);
+    return v===null||v===''||v==='—'||(Array.isArray(v)&&v.length===0);
+  }
+
+  const tabHtml = tabs.map((t,i)=>`<div class="ef-tab${i===0?' active':''}" onclick="efSwitchTab('${t.id}')">${t.label}</div>`).join('');
+
+  const panesHtml = tabs.map((t,i)=>{
+    if(t.json){
+      return `<div class="ef-pane wide${i===0?' active':''}" id="${t.id}" style="display:${i===0?'grid':'none'}">
+        <textarea class="ef-json-wrap" id="edit-json">${esc(JSON.stringify(d,null,2))}</textarea>
+      </div>`;
+    }
+    const fieldsHtml = t.fields.map(f=>{
+      const missing = isMissing(f.path);
+      const wide = f.wide ? 'grid-column:span 2;' : '';
+      return `<div class="ef-field" style="${wide}">
+        <div class="ef-label">${f.label}${missing?` <span style="color:#b45309;">⚠ missing</span>`:''}</div>
+        <input class="ef-input${missing?' missing':''}" id="ef-${f.key}"
+          data-path="${f.path}" value="${esc(fieldVal(f.path))}"
+          placeholder="${missing?'Not found in source':''}"
+          oninput="efMarkDirty(this)">
+      </div>`;
+    }).join('');
+    return `<div class="ef-pane${i===0?' active':''}" id="${t.id}" style="display:${i===0?'grid':'none'}">${fieldsHtml}</div>`;
+  }).join('');
+
+  const body = document.getElementById('edit-body');
+  body.innerHTML = `
+    <div class="ef-tabs" id="ef-tabs">${tabHtml}</div>
+    ${panesHtml}`;
+
+  document.getElementById('edit-overlay').style.display='flex';
+
+  // Auto-focus the relevant field if called from a gap tag
+  if(focusPath){
+    // Find the input with that path and switch to its tab
+    setTimeout(()=>{
+      const el = body.querySelector(`[data-path="${focusPath}"]`);
+      if(el){
+        // Find which pane it belongs to and activate that tab
+        const pane = el.closest('.ef-pane');
+        if(pane) efSwitchTab(pane.id);
+        el.focus();
+        el.select();
+      } else {
+        // Fall back to JSON tab for complex paths
+        efSwitchTab('ef-json');
+      }
+    }, 50);
+  }
+}
+
+function efSwitchTab(id){
+  document.querySelectorAll('.ef-tab').forEach((t,i)=>{
+    const tabs=['ef-deal','ef-prop','ef-txn','ef-returns','ef-debt','ef-json'];
+    t.classList.toggle('active', tabs[i]===id);
+  });
+  document.querySelectorAll('.ef-pane').forEach(p=>{
+    p.style.display = p.id===id ? 'grid' : 'none';
+  });
+}
+
+function efMarkDirty(el){ el.classList.remove('missing'); el.style.borderColor=''; }
+
+function closeEdit(){document.getElementById('edit-overlay').style.display='none';}
+
+function saveEdits(){
+  // Try structured form fields first — apply to opData
+  const inputs = document.querySelectorAll('#edit-body [data-path]');
+  if(inputs.length > 0){
+    inputs.forEach(inp=>{
+      const path = inp.dataset.path;
+      const val = inp.value.trim();
+      // Walk path and set value
+      const keys = path.split('.');
+      let obj = opData;
+      for(let i=0;i<keys.length-1;i++){
+        if(!obj[keys[i]]) obj[keys[i]]={};
+        obj=obj[keys[i]];
+      }
+      // Preserve null for empty — don't overwrite with empty string
+      if(val!=='') obj[keys[keys.length-1]] = val;
+    });
+  }
+  // Also apply any JSON edits if the JSON pane was used
+  const jsonEl = document.getElementById('edit-json');
+  if(jsonEl && jsonEl.value){
+    try{
+      opData = JSON.parse(jsonEl.value);
+    }catch(e){
+      alert('Invalid JSON: '+e.message);
+      return;
+    }
+  }
+  try{localStorage.setItem(OPKEY,JSON.stringify(opData));}catch{}
+  renderOnePager(opData);
+  closeEdit();
+}
+
+function kv(k,v,cls=''){
+  return`<div class="op-kv${cls?' '+cls:''}"><span class="op-k">${esc(k)}</span><span class="op-v">${esc(v||'—')}</span></div>`;
+}
+function kvg(k,val,cls=''){
+  const green=parseFloat(String(val).replace(/[%$,x]/g,''))>0?'green':'';
+  return`<div class="op-kv${cls?' '+cls:''}"><span class="op-k">${esc(k)}</span><span class="op-v ${green}">${esc(val||'—')}</span></div>`;
+}
+
+
+// ── UTILITY ───────────────────────────────────────────────────────────────
+function clearAll(){
+  opData=null;
+  document.getElementById('one-pager-canvas').className='';
+  document.getElementById('one-pager-canvas').innerHTML='';
+  document.getElementById('actions-bar').style.display='none';
+  document.getElementById('gap-panel').classList.remove('vis');
+  setStatus('','');
+  clearFile();
+}
+function printOP(){window.print();}
+
+// ── DEMO DATA (OKC OUTLETS) ───────────────────────────────────────────────
+const DEMO_DATA={
+  deal_name:"OKC Outlets",
+  address:"7624 W Reno Ave, Oklahoma City, OK",
+  mode:"CONSERVATIVE",
+  property:{type:"Class A | Outlet Mall",size_sf:"394,313 SF | 47.0 Acres",occupancy:"95%",tenant_count:"94",walt:"3.1 WALT",vintage:"2011 / 2013",buildings:"11 Building(s)"},
+  transaction:{status:"Screening",strategy:"Hold",seller:"Singerman",sourcing:"CBRE - Mass Marketed"},
+  scorecard:{overall_grade:"—",market_grade:"B-",property_grade:"A",location_grade:"B+",business_plan_grade:"A-",
+    description:"Outlet Center located in Oklahoma City, OK with strong in-place cash flows and 90%+ occupancy.",
+    kpis:["Maintain Occupancy and Cash Flow","National Tenant Credit Health","Market Rent"]},
+  returns:{going_in_yield_cost:"9.6%",going_in_cap:"10.2%",stable_yield_y11:"9.3%",avg_yield_5yr:"10.1%",avg_yield_10yr:"9.7%",
+    hold_period_1:"5",hold_period_2:"10",irr_unlevered_5:"10.4%",irr_unlevered_10:"9.4%",
+    irr_levered_5:"16.8%",irr_levered_10:"13.1%",irr_net_5:"16.8%",irr_net_10:"13.1%",
+    net_profit_5:"$18.0M",net_profit_10:"$25.6M",moic_5:"1.87",moic_10:"2.22",
+    coc_pre_refi_5:"13.1% / 13.1%",coc_pre_refi_10:"12.1% / 12.1%"},
+  valuation:{stable_value_psf_today:"$297",stable_value_psf_5yr:"$328",stable_value_psf_10yr:"$362",
+    stable_cap_rate:"10.21%",stable_cap_expansion:"0 bps",exit_cap_5yr:"10.46%",exit_cap_10yr:"10.49%",mtm_exit_cap_5yr:"14.77%"},
+  sources_uses:{purchase_price:"80000000",purchase_price_psf:"202.9",closing_costs:"1583000",
+    reserves_at_close:"3114427",total_at_closing:"84697427",ticl_costs:"141294",capex_costs:"50303",
+    total_post_closing:"191597",total_uses:"84889024",senior_debt_initial:"64000000",senior_debt_pct:0.756,
+    lightstone_initial:"20697427",lightstone_pct:0.244,total_initial:"84697427"},
+  capital_sources:{proceeds_at_close:"64000000",ltpp:"80.0%",ltc:"75.4%",ltv:"80.0%",fixed_floating:"Fixed",
+    benchmark:"10Y UST",index:"4.29%",index_buffer:"0.25%",spread:"3.22%",effective_rate:"7.76%",
+    rate_cap:"No",term_years:"10",io_period_years:"10",amortization:"—",debt_yield:"12.8%",dscr:"1.65"},
+  top_tenants:[
+    {name:"Nike Factory Store",move_in:"02/2017",national:"—",in_place_rent:"24.25",market_rent:"33.50",mtm_pct:"38%",exp_date:"01/2032",options:"2, 5-yr Fixed",sf:"18.4k SF | 4.7%",rev_pct:"3.8%",sales_psf:"$885",health_ratio:"2.7%"},
+    {name:"Adidas",move_in:"08/2021",national:"—",in_place_rent:"36.18",market_rent:"33.50",mtm_pct:"-7%",exp_date:"01/2030",options:"None",sf:"10.6k SF | 2.7%",rev_pct:"3.2%",sales_psf:"$339",health_ratio:"10.7%"},
+    {name:"Columbia Sportswear",move_in:"02/2023",national:"—",in_place_rent:"40.75",market_rent:"15.00",mtm_pct:"-63%",exp_date:"01/2033",options:"None",sf:"8.5k SF | 2.2%",rev_pct:"2.9%",sales_psf:"$288",health_ratio:"14.1%"},
+    {name:"American Eagle",move_in:"08/2011",national:"—",in_place_rent:"41.30",market_rent:"33.50",mtm_pct:"-19%",exp_date:"01/2033",options:"None",sf:"8.3k SF | 2.1%",rev_pct:"2.9%",sales_psf:"$430",health_ratio:"9.6%"},
+    {name:"Under Armour",move_in:"08/2011",national:"—",in_place_rent:"39.86",market_rent:"33.50",mtm_pct:"-16%",exp_date:"06/2027",options:"None",sf:"8.4k SF | 2.1%",rev_pct:"2.8%",sales_psf:"$483",health_ratio:"8.2%"},
+    {name:"89 Additional Tenants",move_in:"—",national:"—",in_place_rent:"31.21",market_rent:"31.66",mtm_pct:"1%",exp_date:"04/2030",options:"—",sf:"319.5k SF | 81.0%",rev_pct:"84.3%",sales_psf:"$321",health_ratio:"11.0%"},
+    {name:"TOTAL",move_in:"03/2019",national:"91.4% / 8.6%",in_place_rent:"31.65",market_rent:"31.56",mtm_pct:"0%",exp_date:"06/2030",options:"—",sf:"394.3k SF | 100%",rev_pct:"100.0%",sales_psf:"$395",health_ratio:"10.5%"}
+  ],
+  by_size:[
+    {category:"Small Shop <5k",national_pct:"88.6%",local_pct:"11.4%",in_place_rent:"37.49",market_rent:"30.75",mtm_pct:"-18%",walt:"4.56",sf:"175.9k SF | 44.6%",rev_pct:"53.5%",sales_psf:"$388",health_ratio:"12.2%"},
+    {category:"Small Shop 5k-10k",national_pct:"93.3%",local_pct:"6.7%",in_place_rent:"30.06",market_rent:"31.68",mtm_pct:"5%",walt:"3.26",sf:"156.3k SF | 39.6%",rev_pct:"36.3%",sales_psf:"$339",health_ratio:"10.7%"},
+    {category:"Major (10k-50k SF)",national_pct:"100.0%",local_pct:"0.0%",in_place_rent:"19.42",market_rent:"33.50",mtm_pct:"73%",walt:"3.97",sf:"62.1k SF | 15.8%",rev_pct:"10.2%",sales_psf:"$570",health_ratio:"5.1%"},
+    {category:"Big Box (>50k SF)",national_pct:"0.0%",local_pct:"0.0%",in_place_rent:"—",market_rent:"—",mtm_pct:"0%",walt:"0.00",sf:"0k SF | 0.0%",rev_pct:"0.0%",sales_psf:"—",health_ratio:"—"}
+  ],
+  market:{submarket:"Oklahoma City West/Central",gs_grade:"—",avg_rent_growth_10yr:"2.7%",avg_rent_growth_20yr:"2.2%",
+    inventory_total:"101M SF",vacancy_total:"5.6%",market_growth_2026:"2.0%",market_growth_2027:"3.6%",
+    market_growth_2028:"3.4%",market_growth_2029:"2.7%",market_growth_2030:"2.7%",lsg_uw_growth:"2.0%"},
+  income_assumptions:{general_vacancy:"5.0%",credit_loss:"0.5% x Nationals",annual_escalations:"Varies",
+    mla_term_small:"59 Months",mla_renew_prob_small:"79.5%",mla_market_rent_small:"$28.44",
+    mla_ti_new_small:"$38.34",mla_lc_new_small:"575.26%",mla_free_rent_new:"2 Month(s)"},
+  cash_flows:{
+    years:["Y1","Y2","Y3","Y4","Y5","Y6","Y7","Y8","Y9","Y10"],
+    period_ending:["6/30/27","6/30/28","6/30/29","6/30/30","6/30/31","6/30/32","6/30/33","6/30/34","6/30/35","6/30/36"],
+    gross_potential_rent:[10981481,11425746,12156005,12781989,13248719,13444508,13504154,13954031,14270829,14516232],
+    opex_reimbursements:[2035423,1866712,1698531,1486709,1207677,1047750,749269,315625,262207,245729],
+    vacancy_loss:[-1184796,-819655,-1146769,-1053821,-736732,-713443,-1395669,-1075118,-944937,-731290],
+    effective_gross_income:[11761705,12164959,12435831,12908924,13467239,13502779,12429783,12850218,13232860,13640065],
+    other_income:[606450,617142,628158,639504,651192,663222,675618,688392,701544,715086],
+    total_revenue:[12430308,12876924,13163312,13626650,14262875,14323576,13171259,13611169,14049026,14596537],
+    operating_expenses:[4198445,4300467,4449105,4572882,4687421,4815809,4972264,5089820,5231909,5370045],
+    noi:[8169710,8481634,8614884,8975546,9431010,9350192,8133137,8448790,8702495,8985106],
+    total_capex_leasing:[724590,2353483,1117219,2210845,1192988,1026132,2176205,1747280,1641104,1180734],
+    cfbds:[7445120,6128151,7497665,6764701,8238022,8324060,5956932,6701510,7061391,7804372],
+    debt_service:[4965040,4965040,4965040,4965040,4965040,4965040,4965040,4965040,4965040,4965040],
+    cfads:[2199172,2511096,2644346,2938940,3164668,3071427,1841576,1969110,2051920,2454855],
+    yield_on_cost:["9.6%","9.6%","10.0%","10.0%","10.2%","10.6%","10.4%","8.8%","9.0%","9.1%"],
+    cash_on_cash:["10.6%","12.1%","12.8%","14.2%","15.3%","14.8%","8.9%","9.5%","10.6%","11.9%"]
+  },
+  sensitivity:[
+    {price:"$74M",irr:"—",coc_wo_am:"—",coc_w_am:"—"},
+    {price:"$76M",irr:"—",coc_wo_am:"—",coc_w_am:"—"},
+    {price:"$78M",irr:"—",coc_wo_am:"—",coc_w_am:"—"},
+    {price:"$80M",irr:"16.8%",coc_wo_am:"13.1%",coc_w_am:"13.1%",current:true},
+    {price:"$82M",irr:"—",coc_wo_am:"—",coc_w_am:"—"},
+    {price:"$84M",irr:"—",coc_wo_am:"—",coc_w_am:"—"},
+    {price:"$86M",irr:"—",coc_wo_am:"—",coc_w_am:"—"}
+  ],
+  demographics:{pop_30:"242,623",pop_50:"474,110",pop_70:"807,723",hh_30:"89,749",hh_50:"180,080",hh_70:"316,213",
+    hh_med_inc_30:"$59,632",hh_med_inc_50:"$60,953",hh_med_inc_70:"$64,179",
+    med_home_val_30:"$201,643",med_home_val_50:"$215,026",med_home_val_70:"$231,068",
+    crime_vs_natl_30:"1.44x",
+    traffic_streets:[
+      {street:"Park Ave - N",traffic:"101,117/day"},
+      {street:"Madison Ave - S",traffic:"20,600/day"},
+      {street:"5th Ave - E",traffic:"15,939/day"},
+      {street:"9th Ave - W",traffic:"15,902/day"},
+      {street:"Total",traffic:"153,558/day"}
+    ]},
+  expenses:{ret_insurance_psf:"$3.54",cam_psf:"$2.80",management_pct:"3.0% of EGI",other_psf:"$2.84",
+    capex_schedule:[
+      {year:"Year 1",amount:"$368k ($0.9/sf)"},
+      {year:"Year 2",amount:"$379k ($1.0/sf)"},
+      {year:"Year 3",amount:"$390k ($1.0/sf)"},
+      {year:"Year 4",amount:"$402k ($1.0/sf)"},
+      {year:"Year 5",amount:"$414k ($1.1/sf)"}
+    ]},
+  tenant_use_type:[
+    {rank:1,type:"Apparel",rev_pct:"39%",sf_pct:"42%"},
+    {rank:2,type:"Sporting Goods",rev_pct:"21%",sf_pct:"19%"},
+    {rank:3,type:"Specialty Retail",rev_pct:"13%",sf_pct:"11%"},
+    {rank:4,type:"Shoes",rev_pct:"12%",sf_pct:"9%"},
+    {rank:5,type:"Beauty Supplies",rev_pct:"4%",sf_pct:"3%"},
+    {rank:6,type:"Fast Food",rev_pct:"3%",sf_pct:"2%"},
+    {rank:7,type:"Restaurant",rev_pct:"3%",sf_pct:"—"},
+    {rank:8,type:"Services",rev_pct:"3%",sf_pct:"4%"},
+    {rank:9,type:"Specialty Food",rev_pct:"2%",sf_pct:"2%"}
+  ]
+};
+
+
+// ── LAYOUT CONFIG ─────────────────────────────────────────────────────────
+// Each section has: id, label, icon, col (0-3 for main cols, 4=bottom, 5=hidden), rowInCol (sort order)
+// col meanings: 0=Col1, 1=Col2, 2=Col3, 3=Col4, 4=Bottom, 5=Hidden
+const SECTION_DEFS = [
+  {id:'returns',       label:'Returns Summary',       icon:'📈', col:0, row:0},
+  {id:'valuation',     label:'Valuation Metrics',     icon:'🏷️', col:0, row:1},
+  {id:'sources_uses',  label:'Sources & Uses',        icon:'💰', col:1, row:0},
+  {id:'market',        label:'Market & Submarket',    icon:'🗺️', col:1, row:1},
+  {id:'capital',       label:'Capital Sources',       icon:'🏦', col:2, row:0},
+  {id:'income',        label:'Income Assumptions',    icon:'📋', col:2, row:1},
+  {id:'expenses',      label:'Expense Assumptions',   icon:'🔧', col:2, row:2},
+  {id:'tenants',       label:'Top Tenants',           icon:'🏪', col:3, row:0},
+  {id:'by_size',       label:'By Tenant Size Range',  icon:'📐', col:3, row:1},
+  {id:'cash_flows',    label:'Cash Flows (Full-Width)',icon:'📊', col:4, row:0},
+  {id:'demographics',  label:'Trade Area Demographics',icon:'👥', col:4, row:1},
+  {id:'sensitivity',   label:'Purchase Price Sensitivity',icon:'⚡',col:4,row:2},
+  {id:'tenant_use',    label:'Tenant Use Type',       icon:'🏬', col:4, row:3},
+  {id:'map_photo',     label:'Map / Photo',           icon:'📷', col:4, row:4},
+  {id:'summary_kpi',   label:'Summary KPIs',          icon:'🎯', col:4, row:5},
+  {id:'y1_income',     label:'Y1 Income Summary',     icon:'📅', col:4, row:6},
+];
+
+const LKEY = 'lsg_op_layout_v1';
+const WKEY = 'lsg_op_colwidths_v1';
+let layoutConfig = null;
+
+// Width presets: fr values for each of the 4 main columns
+const WIDTH_PRESETS = {
+  narrow:  {label:'Narrow',  fr:0.7},
+  normal:  {label:'Normal',  fr:1.0},
+  wide:    {label:'Wide',    fr:1.4},
+  xwide:   {label:'X-Wide',  fr:1.8},
+};
+const DEFAULT_COL_WIDTHS = ['normal','normal','normal','wide']; // col 0-3
+
+function getColWidths(){
+  try{
+    const s=localStorage.getItem(WKEY);
+    if(s){const w=JSON.parse(s);if(Array.isArray(w)&&w.length===4)return w;}
+  }catch{}
+  return [...DEFAULT_COL_WIDTHS];
+}
+function saveColWidths(w){
+  try{localStorage.setItem(WKEY,JSON.stringify(w));}catch{}
+}
+
+function getLayout(){
+  if(layoutConfig) return layoutConfig;
+  try{
+    const s = localStorage.getItem(LKEY);
+    if(s) return layoutConfig = JSON.parse(s);
+  }catch{}
+  return layoutConfig = SECTION_DEFS.map(s=>({...s}));
+}
+
+function saveLayoutConfig(cfg){
+  layoutConfig = cfg;
+  try{localStorage.setItem(LKEY,JSON.stringify(cfg));}catch{}
+}
+
+function resetLayout(){
+  layoutConfig = SECTION_DEFS.map(s=>({...s}));
+  try{localStorage.removeItem(LKEY);}catch{}
+  try{localStorage.removeItem(WKEY);}catch{}
+  renderLayoutEditor();
+}
+
+// ── SECTION RENDERERS ─────────────────────────────────────────────────────
+function renderSection(id, d){
+  const p=d.property||{}, t=d.transaction||{}, sc=d.scorecard||{},
+        ret=d.returns||{}, val=d.valuation||{}, su=d.sources_uses||{},
+        cs=d.capital_sources||{}, cf=d.cash_flows||{}, mkt=d.market||{},
+        inc=d.income_assumptions||{}, exp=d.expenses||{}, dem=d.demographics||{},
+        tenants=d.top_tenants||[], bySize=d.by_size||[],
+        sens=d.sensitivity||[], tut=d.tenant_use_type||[];
+
+  function retRow(lbl,v5,v10){
+    return`<div class="op-kv"><span class="op-k">${esc(lbl)}</span>
+      <span style="display:flex;gap:8px;">
+        <span class="op-v green" style="min-width:38px;text-align:right">${esc(v5||'—')}</span>
+        <span class="op-v green" style="min-width:38px;text-align:right">${esc(v10||'—')}</span>
+      </span></div>`;
+  }
+
+  const capexRows=(exp.capex_schedule||[]).slice(0,6).map(r=>kv(r.year||'',r.amount||'')).join('');
+  const trafficRows=(dem.traffic_streets||[]).map(s=>kv(s.street||'',s.traffic||'')).join('');
+
+  const tenantRows=tenants.slice(0,10).map(t=>{
+    const isTot=t.name&&t.name.toUpperCase()==='TOTAL';
+    return`<tr class="${isTot?'total':''}">
+      <td>${esc(t.name||'—')}</td><td class="muted">${esc(t.move_in||'—')}</td>
+      <td class="r">${t.in_place_rent?cur(t.in_place_rent,2):'—'}</td>
+      <td class="r">${t.market_rent?cur(t.market_rent,2):'—'}</td>
+      <td class="r">${esc(t.mtm_pct||'—')}</td><td class="muted">${esc(t.exp_date||'—')}</td>
+      <td>${esc(t.sf||'—')}</td><td class="r">${esc(t.rev_pct||'—')}</td>
+      <td class="r">${esc(t.sales_psf||'—')}</td></tr>`;
+  }).join('');
+
+  const sizeRows=bySize.map(r=>`<tr>
+    <td>${esc(r.category||'—')}</td>
+    <td class="r">${r.in_place_rent?cur(r.in_place_rent,2):'—'}</td>
+    <td class="r">${r.market_rent?cur(r.market_rent,2):'—'}</td>
+    <td class="r">${esc(r.mtm_pct||'—')}</td><td class="r">${esc(r.walt||'—')}</td>
+    <td>${esc(r.sf||'—')}</td><td class="r">${esc(r.rev_pct||'—')}</td>
+    <td class="r">${esc(r.sales_psf||'—')}</td></tr>`).join('');
+
+  const sensRows=sens.map(r=>`<tr class="${r.current?'current':''}">
+    <td style="text-align:left;font-weight:${r.current?'700':'400'}">${esc(r.price||'—')}</td>
+    <td>${esc(r.irr||'—')}</td><td>${esc(r.coc_wo_am||'—')}</td><td>${esc(r.coc_w_am||'—')}</td></tr>`).join('');
+
+  const tutRows=tut.slice(0,9).map(r=>`<tr>
+    <td>${esc(r.rank||'')}</td><td>${esc(r.type||'—')}</td>
+    <td class="r">${esc(r.rev_pct||'—')}</td><td class="r">${esc(r.sf_pct||'—')}</td></tr>`).join('');
+
+  // Cash flow
+  const cfYears=cf.years||['Y1','Y2','Y3','Y4','Y5','Y6','Y7','Y8','Y9','Y10'];
+  const periEnding=(cf.period_ending||[]).map(p=>`<th style="font-weight:400;font-size:7px;color:#aaa">${esc(String(p||''))}</th>`).join('');
+  const cfRowDefs=[
+    {lbl:'Gross Potential Rent',key:'gross_potential_rent'},
+    {lbl:'Opex Reimbursements',key:'opex_reimbursements'},
+    {lbl:'Vacancy Loss',key:'vacancy_loss'},
+    {lbl:'Effective Gross Income',key:'effective_gross_income',bold:true},
+    {lbl:'Other Income',key:'other_income'},
+    {lbl:'Total Revenue',key:'total_revenue',bold:true},
+    {lbl:'Operating Expenses',key:'operating_expenses'},
+    {lbl:'Net Operating Income',key:'noi',bold:true,metric:true},
+    {lbl:'Total CapEx & Leasing',key:'total_capex_leasing'},
+    {lbl:'CF Before Debt Service',key:'cfbds',bold:true},
+    {lbl:'Debt Service',key:'debt_service'},
+    {lbl:'CF After Debt Service',key:'cfads',bold:true,metric:true},
+    {lbl:'Yield on Cost',key:'yield_on_cost',metric:true,format:'pct'},
+    {lbl:'Cash on Cash',key:'cash_on_cash',metric:true,format:'pct'},
+  ];
+  function cfFmt(v,fmt){
+    if(v==null||v==='')return'—';
+    if(fmt==='pct')return pctRaw(String(v));
+    const n=parseFloat(String(v).replace(/[$,]/g,''));
+    if(isNaN(n))return String(v);
+    if(Math.abs(n)>=1000000)return'$'+(n/1000000).toFixed(1)+'M';
+    if(Math.abs(n)>=1000)return'$'+Math.round(n/1000)+'k';
+    return'$'+n.toFixed(0);
+  }
+  const cfTableRows=cfRowDefs.map(row=>{
+    const arr=cf[row.key]||[];
+    const cells=cfYears.map((_,i)=>`<td>${cfFmt(arr[i],row.format)}</td>`).join('');
+    const cls=row.metric?'cf-metric':row.bold?'cf-bold':'';
+    return`<tr class="${cls}"><td>${esc(row.lbl)}</td>${cells}</tr>`;
+  }).join('');
+
+  const SECTIONS = {
+    returns:`<div class="op-section">
+      <div class="op-section-hdr">Returns Summary</div>
+      <div class="op-section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:3px;">
+          <div></div><div class="op-dual-hdr">${esc(ret.hold_period_1||'5')}Y</div><div class="op-dual-hdr">${esc(ret.hold_period_2||'10')}Y</div>
+        </div>
+        ${kv('Going-In YoC / Cap',(ret.going_in_yield_cost&&ret.going_in_cap)?ret.going_in_yield_cost+' / '+ret.going_in_cap:ret.going_in_cap||'')}
+        ${kv('Stable YoC (Y11)',ret.stable_yield_y11)}
+        ${retRow('Avg Yield on Cost',ret.avg_yield_5yr,ret.avg_yield_10yr)}
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;text-transform:uppercase;font-size:8px;">IRR</span></div>
+        ${retRow('Unlevered',ret.irr_unlevered_5,ret.irr_unlevered_10)}
+        ${retRow('Levered',ret.irr_levered_5,ret.irr_levered_10)}
+        ${retRow('Lightstone Net',ret.irr_net_5,ret.irr_net_10)}
+        ${retRow('Net Profit',ret.net_profit_5?curM(ret.net_profit_5):null,ret.net_profit_10?curM(ret.net_profit_10):null)}
+        ${retRow('MOIC',ret.moic_5?mul(ret.moic_5):null,ret.moic_10?mul(ret.moic_10):null)}
+        ${retRow('Avg CoC (Pre-Refi)',ret.coc_pre_refi_5,ret.coc_pre_refi_10)}
+      </div></div>`,
+
+    valuation:`<div class="op-section">
+      <div class="op-section-hdr">Valuation Metrics</div>
+      <div class="op-section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;margin-bottom:3px;">
+          <div></div><div class="op-dual-hdr">Today</div><div class="op-dual-hdr">5Yr</div><div class="op-dual-hdr">10Yr</div>
+        </div>
+        <div class="op-kv"><span class="op-k">Stable Val PSF</span>
+          <span style="display:flex;gap:6px;">
+            <span class="op-v">${esc(val.stable_value_psf_today||'—')}</span>
+            <span class="op-v">${esc(val.stable_value_psf_5yr||'—')}</span>
+            <span class="op-v">${esc(val.stable_value_psf_10yr||'—')}</span>
+          </span></div>
+        ${kv('Stable Cap Rate',val.stable_cap_rate)}
+        ${kv('Cap Expansion/Yr',val.stable_cap_expansion)}
+        ${kv('F12 Exit Cap',(val.exit_cap_5yr||val.exit_cap_10yr)?(val.exit_cap_5yr||'—')+' / '+(val.exit_cap_10yr||'—'):null)}
+        ${kv('MTM Exit Cap',val.mtm_exit_cap_5yr)}
+      </div></div>`,
+
+    sources_uses:`<div class="op-section">
+      <div class="op-section-hdr">Sources & Uses</div>
+      <div class="op-section-body">
+        <div class="op-kv section-sep" style="margin-top:0;padding-top:0;border-top:none;">
+          <span class="op-k" style="font-weight:700;font-size:8px;text-transform:uppercase">Sources</span>
+          <span class="op-v" style="font-size:8px;color:#888">%</span></div>
+        ${kv('Senior Debt',su.senior_debt_initial?curM(su.senior_debt_initial)+(su.senior_debt_pct?' ('+pct(su.senior_debt_pct)+'%)':''):'—')}
+        ${kv('Lightstone',su.lightstone_initial?curM(su.lightstone_initial)+(su.lightstone_pct?' ('+pct(su.lightstone_pct)+'%)':''):'—')}
+        ${kv('Total Initial',su.total_initial?curM(su.total_initial):'—')}
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;font-size:8px;text-transform:uppercase">Uses</span><span class="op-v" style="font-size:8px;color:#888">PSF</span></div>
+        ${kv('Purchase Price',su.purchase_price?curM(su.purchase_price)+(su.purchase_price_psf?' ($'+su.purchase_price_psf+')':''):'—')}
+        ${kv('Closing Costs',su.closing_costs?curM(su.closing_costs):'—')}
+        ${kv('Reserves at Close',su.reserves_at_close?curM(su.reserves_at_close):'—')}
+        ${kv('Total at Closing',su.total_at_closing?curM(su.total_at_closing):'—','bold')}
+        ${kv('TI/LC Costs',su.ticl_costs?curM(su.ticl_costs):'—')}
+        ${kv('Total Uses',su.total_uses?curM(su.total_uses):'—','bold')}
+      </div></div>`,
+
+    market:`<div class="op-section">
+      <div class="op-section-hdr">Market & Submarket</div>
+      <div class="op-section-body">
+        ${kv('Submarket',mkt.submarket)}${kv('GS Grade',mkt.gs_grade)}
+        ${kv('Rent Growth T10',mkt.avg_rent_growth_10yr)}${kv('Rent Growth T20',mkt.avg_rent_growth_20yr)}
+        ${kv('Total Inventory',mkt.inventory_total)}${kv('Total Vacancy',mkt.vacancy_total)}
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;font-size:8px;">Market Rent Growth</span></div>
+        ${kv('2026',mkt.market_growth_2026)}${kv('2027',mkt.market_growth_2027)}
+        ${kv('2028',mkt.market_growth_2028)}${kv('2029',mkt.market_growth_2029)}
+        ${kv('2030',mkt.market_growth_2030)}${kv('LSG UW',mkt.lsg_uw_growth)}
+      </div></div>`,
+
+    capital:`<div class="op-section">
+      <div class="op-section-hdr">Capital Sources</div>
+      <div class="op-section-body">
+        <div class="op-kv section-sep" style="margin-top:0;padding-top:0;border-top:none;"><span class="op-k" style="font-weight:700;font-size:8px;">Leverage</span></div>
+        ${kv('LTC',cs.ltc?pct(cs.ltc):'—')}
+        ${kv('LTV',cs.ltv?pct(cs.ltv):'—')}
+        ${kv('LTPP',cs.ltpp?pct(cs.ltpp):'—')}
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;font-size:8px;">Interest Rates</span></div>
+        ${kv('Fixed/Floating',cs.fixed_floating)}${kv('Benchmark',cs.benchmark)}
+        ${kv('Index',cs.index?pct(cs.index):'—')}${kv('Spread',cs.spread?pct(cs.spread):'—')}
+        ${kv('Effective Rate',cs.effective_rate?pct(cs.effective_rate):'—','bold')}${kv('Rate Cap',cs.rate_cap)}
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;font-size:8px;">Loan Terms</span></div>
+        ${kv('Term',cs.term_years?cs.term_years+'y':'—')}${kv('IO Period',cs.io_period_years?cs.io_period_years+'y':'—')}
+        ${kv('Amortization',cs.amortization||'—')}
+        ${kv('Debt Yield',cs.debt_yield?pct(cs.debt_yield):'—')}
+        ${kv('DSCR',cs.dscr?mul(cs.dscr):'—')}
+      </div></div>`,
+
+    income:`<div class="op-section">
+      <div class="op-section-hdr">Income Assumptions</div>
+      <div class="op-section-body">
+        ${kv('General Vacancy',inc.general_vacancy)}${kv('Credit Loss',inc.credit_loss)}
+        ${kv('Annual Escalations',inc.annual_escalations)}${kv('MLA Term (Small)',inc.mla_term_small)}
+        ${kv('Renew Prob',inc.mla_renew_prob_small)}${kv('Market Rent',inc.mla_market_rent_small)}
+        ${kv('TI New',inc.mla_ti_new_small)}${kv('LC New',inc.mla_lc_new_small)}
+        ${kv('Free Rent (New)',inc.mla_free_rent_new)}
+      </div></div>`,
+
+    expenses:`<div class="op-section">
+      <div class="op-section-hdr">Expense Assumptions</div>
+      <div class="op-section-body">
+        ${kv('RE Tax & Insurance',exp.ret_insurance_psf?exp.ret_insurance_psf+' PSF':'—')}
+        ${kv('CAM',exp.cam_psf?exp.cam_psf+' PSF':'—')}${kv('Management',exp.management_pct)}
+        ${kv('Other',exp.other_psf?exp.other_psf+' PSF':'—')}
+        ${capexRows}
+      </div></div>`,
+
+    tenants:`<div class="op-section">
+      <div class="op-section-hdr">Top Tenants</div>
+      <div style="overflow-x:auto;"><table class="op-tbl">
+        <thead><tr><th>Tenant</th><th>Move In</th><th class="r">In-Place</th><th class="r">Mkt Rent</th><th class="r">MTM%</th><th>Exp</th><th>SF</th><th class="r">% Rev</th><th class="r">S PSF</th></tr></thead>
+        <tbody>${tenantRows||'<tr><td colspan="9" style="color:#aaa;text-align:center;padding:6px">—</td></tr>'}</tbody>
+      </table></div></div>`,
+
+    by_size:`<div class="op-section">
+      <div class="op-section-hdr">By Tenant Size Range</div>
+      <div style="overflow-x:auto;"><table class="op-tbl">
+        <thead><tr><th>Category</th><th class="r">In-Place</th><th class="r">Mkt Rent</th><th class="r">MTM%</th><th class="r">WALT</th><th>SF</th><th class="r">% Rev</th><th class="r">S PSF</th></tr></thead>
+        <tbody>${sizeRows||'<tr><td colspan="8" style="color:#aaa;text-align:center;padding:6px">—</td></tr>'}</tbody>
+      </table></div></div>`,
+
+    cash_flows:`<div class="op-section" style="margin-bottom:6px;">
+      <div class="op-section-hdr">Cash Flows</div>
+      <div style="overflow-x:auto;padding:4px 0;">
+        <table class="op-cf-tbl">
+          <thead><tr><th>For Period Ending</th>${periEnding||cfYears.map(y=>`<th>${esc(y)}</th>`).join('')}</tr></thead>
+          <tbody>${cfTableRows||'<tr><td colspan="11" style="color:#aaa;text-align:center;padding:8px">—</td></tr>'}</tbody>
+        </table>
+      </div></div>`,
+
+    demographics:`<div class="op-section">
+      <div class="op-section-hdr">Trade Area Demographics</div>
+      <div class="op-section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;margin-bottom:3px;">
+          <div></div><div class="op-dual-hdr">30%</div><div class="op-dual-hdr">50%</div><div class="op-dual-hdr">70%</div>
+        </div>
+        <div class="op-kv"><span class="op-k">Population</span><span style="display:flex;gap:4px;"><span class="op-v">${esc(dem.pop_30||'—')}</span><span class="op-v">${esc(dem.pop_50||'—')}</span><span class="op-v">${esc(dem.pop_70||'—')}</span></span></div>
+        <div class="op-kv"><span class="op-k">Households</span><span style="display:flex;gap:4px;"><span class="op-v">${esc(dem.hh_30||'—')}</span><span class="op-v">${esc(dem.hh_50||'—')}</span><span class="op-v">${esc(dem.hh_70||'—')}</span></span></div>
+        <div class="op-kv"><span class="op-k">HH Med Inc</span><span style="display:flex;gap:4px;"><span class="op-v">${esc(dem.hh_med_inc_30||'—')}</span><span class="op-v">${esc(dem.hh_med_inc_50||'—')}</span><span class="op-v">${esc(dem.hh_med_inc_70||'—')}</span></span></div>
+        <div class="op-kv"><span class="op-k">Med Home Val</span><span style="display:flex;gap:4px;"><span class="op-v">${esc(dem.med_home_val_30||'—')}</span><span class="op-v">${esc(dem.med_home_val_50||'—')}</span><span class="op-v">${esc(dem.med_home_val_70||'—')}</span></span></div>
+        <div class="op-kv"><span class="op-k">Crime vs Natl</span><span class="op-v">${esc(dem.crime_vs_natl_30||'—')}</span></div>
+        <div class="op-kv section-sep"><span class="op-k" style="font-weight:700;font-size:8px;">Vehicle Traffic</span></div>
+        ${trafficRows}
+      </div></div>`,
+
+    sensitivity:`<div class="op-section">
+      <div class="op-section-hdr">Purchase Price Sensitivity</div>
+      <div class="op-section-body" style="padding:4px;">
+        <table class="op-sens">
+          <thead><tr><th style="text-align:left">Price</th><th>IRR</th><th>CoC W/O Am</th><th>CoC W/ Am</th></tr></thead>
+          <tbody>${sensRows||'<tr><td colspan="4" style="color:#aaa;text-align:center;padding:6px">—</td></tr>'}</tbody>
+        </table>
+      </div></div>`,
+
+    tenant_use:`<div class="op-section">
+      <div class="op-section-hdr">Tenant Use Type</div>
+      <div class="op-section-body" style="padding:4px;">
+        <table class="op-tbl">
+          <thead><tr><th>#</th><th>Type</th><th class="r">% Rev</th><th class="r">% SF</th></tr></thead>
+          <tbody>${tutRows||'<tr><td colspan="4" style="color:#aaa;text-align:center;padding:6px">—</td></tr>'}</tbody>
+        </table>
+      </div></div>`,
+
+    map_photo:`<div class="op-section" style="flex:1;">
+      <div class="op-section-hdr">Subject Property</div>
+      <div style="padding:6px;display:flex;flex-direction:column;gap:5px;min-height:120px;">
+        <div style="flex:1;background:#f4f3f1;border:1px dashed #d1cfc9;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#a8a5a1;text-align:center;min-height:50px;">
+          Map / Aerial Photo
+        </div>
+        <div style="flex:1;background:#f4f3f1;border:1px dashed #d1cfc9;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#a8a5a1;text-align:center;min-height:50px;">
+          Property / Site Photo
+        </div>
+      </div></div>`,
+
+    summary_kpi:`<div class="op-section">
+      <div class="op-section-hdr">Summary Metrics</div>
+      <div class="op-kpi-bar">
+        <div class="op-kpi"><div class="op-kpi-l">Going-In Cap</div><div class="op-kpi-v">${esc(ret.going_in_cap||'—')}</div></div>
+        <div class="op-kpi"><div class="op-kpi-l">IRR Levered</div><div class="op-kpi-v">${esc(ret.irr_levered_5||'—')}</div><div class="op-kpi-s">5yr</div></div>
+        <div class="op-kpi"><div class="op-kpi-l">MOIC</div><div class="op-kpi-v">${esc(ret.moic_5?mul(ret.moic_5):'—')}</div></div>
+        <div class="op-kpi"><div class="op-kpi-l">Debt Yield</div><div class="op-kpi-v">${esc(cs.debt_yield?pct(cs.debt_yield):'—')}</div></div>
+        <div class="op-kpi"><div class="op-kpi-l">DSCR Y1</div><div class="op-kpi-v">${esc(cs.dscr?mul(cs.dscr):'—')}</div></div>
+        <div class="op-kpi"><div class="op-kpi-l">Eff. Rate</div><div class="op-kpi-v">${esc(cs.effective_rate?pct(cs.effective_rate):'—')}</div></div>
+      </div></div>`,
+
+    y1_income:`<div class="op-section">
+      <div class="op-section-hdr">Y1 Income Summary</div>
+      <div class="op-section-body">
+        ${kv('NOI Y1',cf.noi&&cf.noi[0]?cur(cf.noi[0]):'—')}
+        ${kv('Total Revenue Y1',cf.total_revenue&&cf.total_revenue[0]?cur(cf.total_revenue[0]):'—')}
+        ${kv('OpEx Y1',cf.operating_expenses&&cf.operating_expenses[0]?cur(cf.operating_expenses[0]):'—')}
+        ${kv('CF After DS Y1',cf.cfads&&cf.cfads[0]?cur(cf.cfads[0]):'—')}
+        ${kv('Debt Service',cf.debt_service&&cf.debt_service[0]?cur(cf.debt_service[0]):'—')}
+      </div></div>`,
+  };
+
+  return SECTIONS[id]||'';
+}
+
+// ── UPDATED buildOP — layout-config driven ────────────────────────────────
+function buildOP(d){
+  const p=d.property||{}, t=d.transaction||{}, sc=d.scorecard||{};
+  const layout = getLayout();
+  const colWidths = getColWidths();
+
+  // Split into col buckets (0-3 = main cols, 4 = bottom/full-width, 5 = hidden)
+  const cols = [[], [], [], [], []];
+  layout.forEach(s => {
+    if(s.col === 5) return; // hidden — exclude from render entirely
+    const col = Math.min(s.col, 4);
+    cols[col].push({...s});
+  });
+  // Sort each col by row
+  cols.forEach(c => c.sort((a,b) => a.row - b.row));
+
+  // Separate full-width items (cash_flows always full-width) from bottom multi-col
+  const fullWidthIds = ['cash_flows'];
+  const bottomSections = cols[4].filter(s => !fullWidthIds.includes(s.id));
+  const fullWidthSections = cols[4].filter(s => fullWidthIds.includes(s.id));
+
+  // Build dynamic grid-template-columns:
+  // Auto-collapse columns with no content (set to 0fr), otherwise use saved width preset
+  const colFrs = cols.slice(0,4).map((col, i) => {
+    if(col.length === 0) return '0fr'; // auto-collapse
+    const preset = WIDTH_PRESETS[colWidths[i]] || WIDTH_PRESETS.normal;
+    return preset.fr + 'fr';
+  });
+  // Remove consecutive zero-fr columns from the template to avoid double-gap artifacts
+  const gridTemplate = colFrs.join(' ');
+
+  // Render 4 main columns — skip rendering empty ones for cleanliness
+  const mainCols = cols.slice(0,4).map((col, i) => {
+    if(col.length === 0) return `<div class="op-col" style="display:none;"></div>`;
+    const html = col.map(s => renderSection(s.id, d)).join('');
+    return `<div class="op-col">${html}</div>`;
+  }).join('');
+
+  // Render full-width rows
+  const fwHtml = fullWidthSections.map(s => renderSection(s.id, d)).join('');
+
+  // Render bottom sections in a dynamic grid (auto-size based on count)
+  const bCount = bottomSections.length;
+  const bottomGrid = bCount <= 2 ? `grid-template-columns:repeat(${bCount},1fr)` :
+                     bCount === 3 ? 'grid-template-columns:1fr 1fr 1fr' :
+                     'grid-template-columns:1fr 1fr 1.1fr 1fr';
+  const bottomHtml = bCount > 0 ? `
+    <div class="op-bottom" style="${bottomGrid}">
+      ${bottomSections.map(s => `<div>${renderSection(s.id, d)}</div>`).join('')}
+    </div>` : '';
+
+  // Header build
+  function gradeClass(g){if(!g||g==='—')return'';const s=String(g).trim();if(s.startsWith('A'))return'grade-A';if(s.startsWith('B'))return'grade-B';if(s.startsWith('C'))return'grade-C';return'';}
+  function hkv(k,v){return`<div class="op-hkv"><span class="op-hk">${esc(k)}</span><span style="font-weight:600;color:#111;text-align:right;font-size:9px;">${esc(v||'—')}</span></div>`;}
+
+  return `<div class="op">
+    <div class="op-head">
+      <div class="op-head-top">
+        <div class="op-head-title">
+          <div class="op-name">${esc(d.deal_name||'Deal Name')}</div>
+          <div class="op-addr">${esc(d.address||'')}</div>
+          <div class="op-mode">${esc(d.mode||'CONSERVATIVE')}</div>
+        </div>
+        <div class="op-head-desc">
+          <div class="op-head-desc-lbl">Opportunity Description</div>
+          <div class="op-head-desc-body">
+            <span class="op-head-desc-text">${esc(sc.description||'—')}</span>
+            ${(sc.kpis||[]).length>0?`<span class="op-head-kpis">${(sc.kpis||[]).map(k=>`<span class="op-head-kpi-tag">${esc(k)}</span>`).join('')}</span>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="op-head-bottom">
+        <div class="op-hbox"><div class="op-hbox-lbl">Property</div><div class="op-hbox-body">
+          ${hkv('Type',p.type||p.class)}${hkv('Size',p.size_sf)}
+          ${hkv('Leasing',[p.occupancy,p.tenant_count?p.tenant_count+' Tenants':null,p.walt?p.walt+' WALT':null].filter(Boolean).join(' | '))}
+          ${hkv('Vintage',p.vintage)}${hkv('Buildings',p.buildings)}
+        </div></div>
+        <div class="op-hbox"><div class="op-hbox-lbl">Transaction</div><div class="op-hbox-body">
+          ${hkv('Status',t.status)}${hkv('Strategy',t.strategy)}${hkv('Seller',t.seller)}${hkv('Sourcing',t.sourcing)}
+        </div></div>
+        <div class="op-hbox"><div class="op-hbox-lbl">Scorecard</div>
+          <div class="op-grades">
+            <div class="op-grade-item"><div class="op-grade-lbl">Overall</div><div class="op-grade-val ${gradeClass(sc.overall_grade)}">${esc(sc.overall_grade||'—')}</div></div>
+            <div class="op-grade-item"><div class="op-grade-lbl">Market</div><div class="op-grade-val ${gradeClass(sc.market_grade)}">${esc(sc.market_grade||'—')}</div></div>
+            <div class="op-grade-item"><div class="op-grade-lbl">Property</div><div class="op-grade-val ${gradeClass(sc.property_grade)}">${esc(sc.property_grade||'—')}</div></div>
+            <div class="op-grade-item"><div class="op-grade-lbl">Location</div><div class="op-grade-val ${gradeClass(sc.location_grade)}">${esc(sc.location_grade||'—')}</div></div>
+            <div class="op-grade-item"><div class="op-grade-lbl">Biz Plan</div><div class="op-grade-val ${gradeClass(sc.business_plan_grade)}">${esc(sc.business_plan_grade||'—')}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="op-body" style="grid-template-columns:${gridTemplate};">${mainCols}</div>
+    <div style="padding:0 8px 4px;">${fwHtml}</div>
+    ${bottomHtml}
+    <div class="op-footer"><span>Confidential &amp; Proprietary — LIGHTSTONE</span><span>${new Date().toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'})}</span></div>
+  </div>`;
+}
+
+// ── LAYOUT EDITOR LOGIC ───────────────────────────────────────────────────
+const COL_DEFS = [
+  {id:0, label:'Column 1',    cls:''},
+  {id:1, label:'Column 2',    cls:''},
+  {id:2, label:'Column 3',    cls:''},
+  {id:3, label:'Column 4',    cls:''},
+  {id:4, label:'Bottom / Full-Width', cls:'fullwidth'},
+  {id:5, label:'Hidden',      cls:'hidden-col'},
+];
+
+let dragSrcId = null;
+let workingLayout = null;
+let workingColWidths = null;
+
+function openLayoutEditor(){
+  workingLayout = JSON.parse(JSON.stringify(getLayout()));
+  workingColWidths = [...getColWidths()];
+  renderLayoutEditor();
+  document.getElementById('le-overlay').classList.add('open');
+}
+function closeLayoutEditor(){
+  document.getElementById('le-overlay').classList.remove('open');
+  workingColWidths = null;
+}
+function leOverlayClick(e){if(e.target.id==='le-overlay')closeLayoutEditor();}
+
+function setColWidth(colId, preset){
+  workingColWidths = workingColWidths || [...getColWidths()];
+  workingColWidths[colId] = preset;
+  // Re-render just the width buttons without full re-render to preserve drag state
+  document.querySelectorAll(`.le-width-btn`).forEach(btn=>{
+    const colMatch = btn.closest('.le-col-wrap');
+    if(!colMatch) return;
+    const colIdx = COL_DEFS.findIndex(c => colMatch.querySelector(`.le-dropzone`)?.dataset.col == c.id);
+    // simpler: just re-render the whole editor
+  });
+  renderLayoutEditor();
+}
+
+function renderLayoutEditor(){
+  const cols = document.getElementById('le-cols');
+  const layout = workingLayout || getLayout();
+  const colWidths = workingColWidths || getColWidths();
+
+  cols.innerHTML = COL_DEFS.map(col => {
+    const sections = layout.filter(s => s.col === col.id).sort((a,b)=>a.row-b.row);
+    const cards = sections.map(s => `
+      <div class="le-card" draggable="true" data-id="${s.id}"
+        ondragstart="leDragStart(event)" ondragend="leDragEnd(event)">
+        <span class="le-card-icon">${SECTION_DEFS.find(x=>x.id===s.id)?.icon||'📄'}</span>
+        <span class="le-card-lbl">${SECTION_DEFS.find(x=>x.id===s.id)?.label||s.id}</span>
+        <span class="le-card-grip">⠿</span>
+      </div>`).join('');
+
+    // Width selector — only for main columns 0-3
+    const isMainCol = col.id >= 0 && col.id <= 3;
+    const widthPicker = isMainCol ? `
+      <div class="le-width-picker">
+        ${Object.entries(WIDTH_PRESETS).map(([key,preset])=>`
+          <button class="le-width-btn${colWidths[col.id]===key?' active':''}"
+            onclick="setColWidth(${col.id},'${key}')"
+            title="${preset.label} (${preset.fr}fr)">${preset.label}</button>
+        `).join('')}
+        <span class="le-width-hint" id="le-w-hint-${col.id}">${sections.length===0?'⚡ auto-collapse':''}</span>
+      </div>` : '';
+
+    return `<div class="le-col-wrap">
+      <div class="le-col-hdr ${col.cls}">${col.label}</div>
+      ${widthPicker}
+      <div class="le-dropzone" data-col="${col.id}"
+        ondragover="leDragOver(event)" ondragleave="leDragLeave(event)" ondrop="leDrop(event,${col.id})">
+        ${cards}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function leDragStart(e){
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function leDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.le-dropzone').forEach(z=>z.classList.remove('drag-over'));
+}
+function leDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function leDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function leDrop(e, colId){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragSrcId) return;
+
+  // Find drop position relative to existing cards
+  const zone = e.currentTarget;
+  const cards = [...zone.querySelectorAll('.le-card:not(.dragging)')];
+  let insertRow = 0;
+  for(let i=0; i<cards.length; i++){
+    const rect = cards[i].getBoundingClientRect();
+    if(e.clientY > rect.top + rect.height/2) insertRow = i+1;
+    else break;
+  }
+
+  // Update workingLayout
+  workingLayout = workingLayout || JSON.parse(JSON.stringify(getLayout()));
+  const item = workingLayout.find(s=>s.id===dragSrcId);
+  if(!item) return;
+
+  // Remove from old col, shift others
+  const oldCol = workingLayout.filter(s=>s.col===item.col&&s.id!==dragSrcId).sort((a,b)=>a.row-b.row);
+  oldCol.forEach((s,i)=>s.row=i);
+
+  // Insert into new col
+  item.col = colId;
+  const newCol = workingLayout.filter(s=>s.col===colId&&s.id!==dragSrcId).sort((a,b)=>a.row-b.row);
+  // Shift items at or after insertRow
+  newCol.forEach(s=>{ if(s.row>=insertRow) s.row++; });
+  item.row = insertRow;
+
+  // Renormalize
+  [0,1,2,3,4,5].forEach(c=>{
+    const inCol = workingLayout.filter(s=>s.col===c).sort((a,b)=>a.row-b.row);
+    inCol.forEach((s,i)=>s.row=i);
+  });
+
+  renderLayoutEditor();
+  dragSrcId = null;
+}
+
+function applyLayout(){
+  saveLayoutConfig(workingLayout);
+  if(workingColWidths) saveColWidths(workingColWidths);
+  if(opData) renderOnePager(opData);
+  closeLayoutEditor();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  try{const k=localStorage.getItem(KKEY);if(k){document.getElementById('apiKey').value=k;checkKey();}}catch{}
+  try{const d=localStorage.getItem(OPKEY);if(d){opData=JSON.parse(d);}}catch{}
+  // Auto-restore last session
+  if(opData&&opData.deal_name){
+    renderOnePager(opData);
+    setStatus('success','Restored from last session: '+opData.deal_name);
+  }
+});
+</script>
+
+<!-- LAYOUT EDITOR -->
+<div id="le-overlay" class="le-overlay" onclick="leOverlayClick(event)">
+  <div class="le-modal">
+    <div class="le-head">
+      <div>
+        <div class="le-title">Layout Editor</div>
+        <div class="le-subtitle">Drag sections between columns to rearrange. Use width buttons (Narrow → X-Wide) to size each column. Empty columns collapse automatically.</div>
+      </div>
+      <button onclick="closeLayoutEditor()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--dim);padding:2px 8px;">×</button>
+    </div>
+    <div class="le-body">
+      <div class="le-cols" id="le-cols"></div>
+    </div>
+    <div class="le-foot">
+      <button class="btn btn-ghost btn-sm" onclick="resetLayout()">Reset to Default</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeLayoutEditor()">Close</button>
+        <button class="btn btn-primary" onclick="applyLayout()">Apply Layout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
