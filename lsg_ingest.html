@@ -260,15 +260,6 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 .deal-addr-cell{font-size:10px;color:var(--muted);margin-top:1px;}
 .num-cell{text-align:right;font-variant-numeric:tabular-nums;}
 .dash-cell{color:var(--dim);text-align:center;}
-
-
-.deals-table{width:100%;border-collapse:collapse;}
-.deals-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
-.deals-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle;}
-.deals-table tr:hover td{background:var(--surface2);}
-.deals-table tr:last-child td{border-bottom:none;}
-.deal-name-cell{font-weight:600;}
-.deal-addr-cell{font-size:11px;color:var(--muted);}
 .tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.04em;}
 .tag-screening{background:var(--blue-bg);color:var(--blue-text);border:1px solid var(--blue-border);}
 .tag-active{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border);}
@@ -334,7 +325,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
     <div class="brand-mark">L</div>
     <div>
       <div class="brand-name">Lightstone</div>
-      <div class="brand-sub">Deal Ingest Pipeline</div>
+      <div class="brand-sub">Deal Pipeline</div>
     </div>
   </div>
   <div class="hdr-creds">
@@ -358,7 +349,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
 </div>
 
 <div class="wrap">
-  <div class="page-title">Deal Ingest Pipeline</div>
+  <div class="page-title">Deal Pipeline</div>
 
   <div class="tabs" id="main-tabs">
     <div class="tab active" onclick="switchTab('ingest')">Ingest</div>
@@ -782,7 +773,7 @@ GRANT USAGE ON SCHEMA public TO authenticated;</div>
     </div>
     <div class="ddm-body" id="modal-body"></div>
     <div class="ddm-footer" id="modal-footer">
-      <button class="btn btn-outline" id="modal-op-btn" onclick="">Open in One Pager →</button>
+      <button class="btn btn-outline" id="modal-op-btn">Open in One Pager →</button>
       <button class="btn btn-ghost" onclick="closeModal()">Close</button>
     </div>
   </div>
@@ -863,7 +854,7 @@ function renderQueue(){
   q.innerHTML = srcFiles.map((item,i)=>{
     const isPDF = item.file.name.toLowerCase().endsWith('.pdf');
     const sizeMB = (item.file.size/1024/1024).toFixed(1);
-    const typeBtns = FILE_TYPES.map(t=>`<span class="type-btn${t===item.type?' selected':''}" onclick="setType(${i},'${t}')">${t}</span>`).join('');
+    const typeBtns = FILE_TYPES.map(t=>`<span class="type-btn${t===item.type?' selected':''}" onclick="setType(${i},'${esc(t)}')">${esc(t)}</span>`).join('');
     return `<div class="fq-item">
       <span class="fq-icon">${isPDF?'📄':'📊'}</span>
       <div class="fq-info">
@@ -1336,30 +1327,32 @@ async function runIngest(){
   finishPipeline();
 }
 
+function getMetadata(){
+  return {
+    name:     document.getElementById('meta-name').value.trim(),
+    type:     document.getElementById('meta-type').value,
+    status:   document.getElementById('meta-status').value,
+    broker:   document.getElementById('meta-broker').value.trim(),
+    date:     document.getElementById('meta-date').value,
+    assignee: document.getElementById('meta-assignee').value.trim(),
+  };
+}
+
 function buildMetaContext(){
-  const name = document.getElementById('meta-name').value.trim();
-  const type = document.getElementById('meta-type').value;
-  const status = document.getElementById('meta-status').value;
-  const broker = document.getElementById('meta-broker').value.trim();
-  const date = document.getElementById('meta-date').value;
-  const assignee = document.getElementById('meta-assignee').value.trim();
+  const {name,type,status,broker,date,assignee} = getMetadata();
   const parts = [];
-  if(name) parts.push(`Deal Name (pre-tagged by analyst): ${name}`);
-  if(type) parts.push(`Asset Type (pre-tagged): ${type}`);
-  if(status) parts.push(`Status (pre-tagged): ${status}`);
-  if(broker) parts.push(`Source Broker (pre-tagged): ${broker}`);
-  if(date) parts.push(`Date Received: ${date}`);
+  if(name)     parts.push(`Deal Name (pre-tagged by analyst): ${name}`);
+  if(type)     parts.push(`Asset Type (pre-tagged): ${type}`);
+  if(status)   parts.push(`Status (pre-tagged): ${status}`);
+  if(broker)   parts.push(`Source Broker (pre-tagged): ${broker}`);
+  if(date)     parts.push(`Date Received: ${date}`);
   if(assignee) parts.push(`Assigned To: ${assignee}`);
   if(parts.length===0) return '';
   return `Analyst pre-tagged metadata (use these values, do not override from document):\n${parts.join('\n')}\n\n`;
 }
 
 function applyMetadata(obj){
-  const name = document.getElementById('meta-name').value.trim();
-  const type = document.getElementById('meta-type').value;
-  const status = document.getElementById('meta-status').value;
-  const broker = document.getElementById('meta-broker').value.trim();
-  const assignee = document.getElementById('meta-assignee').value.trim();
+  const {name,type,status,broker,assignee} = getMetadata();
   if(name && !obj.deal_name) obj.deal_name = name;
   if(type && obj.property) obj.property.type = obj.property.type||type;
   if(status && obj.transaction) obj.transaction.status = status;
@@ -1418,9 +1411,9 @@ async function writeToSupabase(data){
     deal_name:      data.deal_name||null,
     address:        [data.address,data.city,data.state].filter(Boolean).join(', ')||null,
     asset_type:     data.property?.type||null,
-    purchase_price: parseFloat(String(data.sources_uses?.purchase_price||'').replace(/[$,M]/g,''))*( String(data.sources_uses?.purchase_price||'').includes('M')?1e6:1)||null,
-    going_in_cap:   parseFloat(String(data.returns?.going_in_cap||'').replace(/%/g,''))||null,
-    irr_levered_5:  parseFloat(String(data.returns?.irr_levered_5||'').replace(/%/g,''))||null,
+    purchase_price: parseAmt(data.sources_uses?.purchase_price)||null,
+    going_in_cap:   parsePct(data.returns?.going_in_cap)||null,
+    irr_levered_5:  parsePct(data.returns?.irr_levered_5)||null,
     moic_5:         parseFloat(String(data.returns?.moic_5||'').replace(/x/gi,''))||null,
     status:         data.transaction?.status||'Screening',
     source_broker:  data.transaction?.sourcing||null,
@@ -1471,7 +1464,9 @@ async function writeToSupabase(data){
   }
 
   const saved = await resp.json();
-  return saved[0]?.id || 'saved';
+  const savedId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
+  if(!savedId) throw new Error('Supabase returned an unexpected response format — deal may not have been saved correctly. Try again.');
+  return savedId;
 }
 
 function showResultSummary(d){
@@ -1514,7 +1509,7 @@ async function saveToDB(){
 function openInOnePager(){
   if(!ingestResult) return;
   try{ localStorage.setItem('lsg_op_data_v1', JSON.stringify(ingestResult)); }catch{}
-  window.location.href = 'lsg_one_pager.html';
+  window.open(getToolUrl('lsg_one_pager.html'), '_blank');
 }
 
 function resetIngest(){
@@ -1525,7 +1520,7 @@ function resetIngest(){
   document.getElementById('conflict-section').style.display='none';
   document.getElementById('result-section').style.display='none';
   document.getElementById('ingest-status').className='status-bar';
-  ['meta-name','meta-broker','meta-assignee'].forEach(id=>document.getElementById(id).value='');
+  ['meta-name','meta-broker','meta-assignee'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('meta-type').value='';
   document.getElementById('meta-status').value='Screening';
   document.getElementById('ingest-btn').disabled=false;
@@ -1598,9 +1593,9 @@ function renderDeals(deals){
   const screenCell = d => {
     if(d.screen?.verdict){
       const v = d.screen.verdict;
-      return `<span class="verdict-badge verdict-${v}" onclick="openDeal('${d.id}')" title="View screen result">${v}</span><button class="rerun-btn" onclick="event.stopPropagation();openDealAndScreen('${d.id}')" title="Re-run screen">↻</button>`;
+      return `<span class="verdict-badge verdict-${v}" onclick="openDeal('${esc(d.id)}')" title="View screen result">${v}</span><button class="rerun-btn" onclick="event.stopPropagation();openDealAndScreen('${esc(d.id)}')" title="Re-run screen">↻</button>`;
     }
-    return `<button class="screen-btn" onclick="event.stopPropagation();openDealAndScreen('${d.id}')">⚡ Screen</button>`;
+    return `<button class="screen-btn" onclick="event.stopPropagation();openDealAndScreen('${esc(d.id)}')">⚡ Screen</button>`;
   };
 
   const rows = deals.map(d => {
@@ -1621,7 +1616,7 @@ function renderDeals(deals){
     const askPrice = su.purchase_price || d.purchase_price || null;
     const cap = ret.going_in_cap || d.going_in_cap || null;
 
-    return `<tr style="cursor:pointer;" onclick="openDeal('${d.id}')">
+    return `<tr style="cursor:pointer;" onclick="openDeal('${esc(d.id)}')">
       <td class="wrap-cell"><div class="deal-name-cell">${esc(d.deal_name||'Unnamed')}</div><div class="deal-addr-cell">${esc(d.address||'')}</div></td>
       <td>${dash(market?esc(market):null)}</td>
       <td class="num-cell">${sfNum?fmtSF(sfNum):'<span class="dash-cell">—</span>'}</td>
@@ -1658,13 +1653,12 @@ function renderDeals(deals){
   </table></div>`;
 }
 
-function filterDeals(){
+function getFilteredDeals(){
   const q      = (document.getElementById('search-input')?.value||'').toLowerCase();
   const type   = document.getElementById('filter-type')?.value||'';
   const status = document.getElementById('filter-status')?.value||'';
   const market = document.getElementById('filter-market')?.value||'';
-
-  const filtered = allDeals.filter(d=>{
+  return allDeals.filter(d=>{
     const r = d.raw_data || {};
     const mkt = r.market || {};
     const dealMarket = mkt.submarket || [r.city,r.state].filter(Boolean).join(', ') || '';
@@ -1675,7 +1669,10 @@ function filterDeals(){
     if(market && dealMarket!==market) return false;
     return true;
   });
+}
 
+function filterDeals(){
+  const filtered = getFilteredDeals();
   document.getElementById('deal-count-inline').textContent = `${filtered.length} of ${allDeals.length} deal${allDeals.length!==1?'s':''}`;
   renderDeals(filtered);
 }
@@ -1698,7 +1695,8 @@ async function openDeal(id){
   currentDealId = id;
   const url = getSbUrl(); const key = getSbKey();
   try{
-    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${id}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
+    // NOTE: internal tool — RLS disabled intentionally; all deals visible to all team members
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${encodeURIComponent(id)}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
     const rows = await resp.json();
     const deal = rows[0];
     if(!deal) return;
@@ -1767,14 +1765,15 @@ async function openDeal(id){
 
     document.getElementById('modal-body').innerHTML = metricsBar + infoSection + thesisSection + riskTags + screenSection;
 
-    // If screen result exists, render it immediately
+    // If screen result exists, render it immediately (#screen-result-block is always created by renderScreenerSection above)
     if(deal.screen){
       const el = document.getElementById('screen-result-block');
-      if(el){ el.innerHTML = renderScreenResult(deal.screen); el.style.display='block'; }
+      el.innerHTML = renderScreenResult(deal.screen);
+      el.style.display = 'block';
     }
 
     document.getElementById('deal-modal').classList.add('open');
-  } catch(e){ alert('Error loading deal: '+e.message); }
+  } catch(e){ currentDealId=null; alert('Error loading deal: '+e.message); }
 }
 
 function renderScreenerSection(deal){
@@ -1815,11 +1814,11 @@ function renderScreenerSection(deal){
         </div>
         <div class="screen-progress-text" id="screen-progress-text" style="display:none;"></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button class="btn btn-primary" id="run-screen-btn" onclick="runScreen('${deal.id}')">
+          <button class="btn btn-primary" id="run-screen-btn" onclick="runScreen('${esc(deal.id)}')">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             ${had?'Re-run Screen':'Run Screen'}
           </button>
-          ${had?`<button class="btn btn-ghost btn-sm" onclick="clearScreen('${deal.id}')">Clear Result</button>`:''}
+          ${had?`<button class="btn btn-ghost btn-sm" onclick="clearScreen('${esc(deal.id)}')">Clear Result</button>`:''}
           <span style="font-size:10px;color:var(--dim);margin-left:auto;">${had&&deal.screen.ran_at?'Last run: '+deal.screen.ran_at:''}</span>
         </div>
         <div id="screen-result-block" style="display:none;margin-top:14px;"></div>
@@ -2022,7 +2021,7 @@ Screen this deal against the hurdles above. If price or debt terms are missing, 
   // PATCH screen result to Supabase
   try{
     const sbUrl = getSbUrl(); const sbKey = getSbKey();
-    await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${dealId}`,{
+    const patchResp = await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${encodeURIComponent(dealId)}`,{
       method:'PATCH',
       headers:{
         'Content-Type':'application/json',
@@ -2032,6 +2031,7 @@ Screen this deal against the hurdles above. If price or debt terms are missing, 
       },
       body:JSON.stringify({screen:result})
     });
+    if(!patchResp.ok) console.warn('Screen save returned non-OK status:', patchResp.status);
   } catch(e){
     console.warn('Screen save failed:', e.message);
     // Still show result even if save failed
@@ -2049,21 +2049,7 @@ Screen this deal against the hurdles above. If price or debt terms are missing, 
     const el = document.getElementById('screen-result-block');
     if(el){ el.innerHTML=renderScreenResult(result); el.style.display='block'; }
     // Refresh pipeline table to show verdict badge
-    renderDeals(allDeals.filter(d=>{
-      const q=(document.getElementById('search-input')?.value||'').toLowerCase();
-      const type=document.getElementById('filter-type')?.value||'';
-      const status=document.getElementById('filter-status')?.value||'';
-      const market=document.getElementById('filter-market')?.value||'';
-      const r2=d.raw_data||{};
-      const mkt2=r2.market||{};
-      const dm=mkt2.submarket||[r2.city,r2.state].filter(Boolean).join(', ')||'';
-      const txt=`${d.deal_name||''} ${d.address||''} ${d.source_broker||''} ${dm}`.toLowerCase();
-      if(q&&!txt.includes(q)) return false;
-      if(type&&d.asset_type!==type) return false;
-      if(status&&d.status!==status) return false;
-      if(market&&dm!==market) return false;
-      return true;
-    }));
+    renderDeals(getFilteredDeals());
   }, 500);
 }
 
@@ -2081,11 +2067,12 @@ async function clearScreen(dealId){
   // Clear from Supabase
   try{
     const sbUrl=getSbUrl(); const sbKey=getSbKey();
-    await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${dealId}`,{
+    const patchResp = await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${encodeURIComponent(dealId)}`,{
       method:'PATCH',
       headers:{'Content-Type':'application/json','apikey':sbKey,'Authorization':`Bearer ${sbKey}`,'Prefer':'return=minimal'},
       body:JSON.stringify({screen:null})
     });
+    if(!patchResp.ok) console.warn('Clear screen returned non-OK status:', patchResp.status);
   }catch(e){ console.warn('Clear screen failed:',e); }
   const idx=allDeals.findIndex(d=>String(d.id)===String(dealId));
   if(idx>=0) allDeals[idx].screen=null;
@@ -2126,11 +2113,11 @@ function copyScreenBrief(){
 async function loadInOnePager(id){
   const url = getSbUrl(); const key = getSbKey();
   try{
-    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${id}&select=raw_data`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${encodeURIComponent(id)}&select=raw_data`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
     const rows = await resp.json();
     if(rows[0]?.raw_data){
       localStorage.setItem('lsg_op_data_v1', JSON.stringify(rows[0].raw_data));
-      window.location.href='lsg_one_pager.html';
+      window.open(getToolUrl('lsg_one_pager.html'), '_blank');
     }
   } catch(e){ alert('Error: '+e.message); }
 }
@@ -2208,7 +2195,7 @@ function initCompare(){
       document.getElementById('compare-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔑</div><div class="empty-state-text">Connect Supabase credentials to load deals</div></div>`;
       return;
     }
-    fetch(`${url}/rest/v1/deals?select=id,deal_name,address,asset_type,purchase_price,going_in_cap,irr_levered_5,moic_5,status,source_broker,assignee,ingested_at,raw_data&order=ingested_at.desc&limit=100`,{
+    fetch(`${url}/rest/v1/${DEALS_TABLE}?select=id,deal_name,address,asset_type,purchase_price,going_in_cap,irr_levered_5,moic_5,status,source_broker,assignee,ingested_at,raw_data&order=ingested_at.desc&limit=100`,{
       headers:{'apikey':key,'Authorization':`Bearer ${key}`}
     }).then(r=>r.json()).then(data=>{
       allDeals=data;
@@ -2398,6 +2385,10 @@ function renderCompare(){
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Parse dollar/M strings like "$65.5M", "$65,500,000", or plain numbers → raw number
+function parseAmt(v){ const s=String(v||'').trim(); const n=parseFloat(s.replace(/[$,]/g,'')); if(isNaN(n)) return null; return (s.toUpperCase().includes('M')&&n<10000)?n*1e6:n; }
+// Parse percent strings like "8.5%", "8.5", or "0.085" (if ≤1.5 treated as decimal) → percentage number
+function parsePct(v){ const s=String(v||'').trim(); if(!s) return null; const n=parseFloat(s.replace(/%/g,'')); if(isNaN(n)) return null; return n; }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
