@@ -2,7 +2,7 @@
 
 > **Usage:** Paste this file (or relevant sections) at the top of every new Claude chat before uploading HTML files.
 > **Maintained by:** Phil Jomphe — update after every work session.
-> **Last updated:** April 13, 2026
+> **Last updated:** April 14, 2026
 
 ---
 
@@ -194,6 +194,33 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 
 ## 6. Active Work Log
 
+### Session ending April 14, 2026
+**lsg_ingest.html — bug fixes, security, simplification:**
+- Fixed `encodeURIComponent()` on deal IDs in all 4 Supabase URL params (B1)
+- Added PATCH response validation in `runScreen()` and `clearScreen()` — logs warning if save fails (B2/B9)
+- Added null guard in `resetIngest()` — optional chaining on form field lookups (B5)
+- Fixed `openDeal()` catch block to clear `currentDealId` before alerting (B6)
+- Fixed `writeToSupabase()` — validates response shape; throws real error if UUID missing instead of returning `'saved'` (B10)
+- Escaped all deal ID / file type interpolations in `onclick` handlers — XSS hardening (SEC1/SEC2)
+- Added comment in `openDeal()` documenting intentional no-RLS (SEC6)
+- Removed duplicate `.deals-table` CSS block (S1)
+- Removed empty `onclick=""` from modal footer button (S8)
+- Extracted `getMetadata()` — `buildMetaContext()` and `applyMetadata()` now share one source of truth (S3)
+- Extracted `getFilteredDeals()` — eliminated 15-line inline filter duplicate in `runScreen()` (S4)
+- Fixed hardcoded `deals` table name in `initCompare()` — now uses `DEALS_TABLE` constant (S4b)
+- Simplified screen-result-block render in `openDeal()` — removed redundant null check (S6)
+- Added `parseAmt()` and `parsePct()` utility functions; simplified `writeToSupabase()` row construction (S7)
+- "Open in One Pager" now opens in a new tab (`window.open(..., '_blank')`) — both from modal and from ingest result panel
+- Renamed heading from "Deal Ingest Pipeline" to "Deal Pipeline"
+
+**lsg_one_pager.html — DB Sync button:**
+- Added Supabase URL + anon key credential inputs to header (shares localStorage keys with ingest tool — credentials auto-populate)
+- Added **DB Sync** button to actions bar
+- `syncToDB()`: PATCH if `opData._deal_id` exists (UPDATE), POST if new (INSERT); saves returned UUID back to `opData._deal_id` and localStorage; button turns green on success
+- `buildSyncRow()`: builds the same scalar index columns + `raw_data` JSONB payload as the ingest tool
+- Specific error messages for 401, 403, 404 on sync failure
+- Supabase creds restored from localStorage on `DOMContentLoaded`
+
 ### Session ending April 13, 2026
 **lsg_one_pager.html changes:**
 - Added multi-file upload with type tagging (replaces single file input)
@@ -226,7 +253,7 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 ## 7. Open Items (Prioritized Backlog)
 
 ### Immediate / Next Session
-- [ ] **DB Sync button in one-pager** — writes `opData` back to Supabase; UPDATE if `_deal_id` exists, INSERT if new; saves returned `_deal_id` to localStorage
+- [x] **DB Sync button in one-pager** — writes `opData` back to Supabase; UPDATE if `_deal_id` exists, INSERT if new; saves returned `_deal_id` to localStorage ✓ April 14
 - [ ] **Test full workflow end-to-end** — ingest OM → pipeline tab → open in one-pager → edit → sync back to Supabase
 
 ### Near Term
@@ -267,7 +294,7 @@ Uploading current files: [list files you're attaching]
 - Phil Jomphe, Acquisitions, Lightstone Group (299 Park Ave NYC)
 - Working under Sanford (SVP Investments), retail vertical (Akiva) + structured finance (Irving)
 - IT restrictions — no local installs; everything runs in the browser or GitHub Pages
-- No terminal access — all deployment via GitHub web UI drag-and-drop
+- Deployment: `git push origin main` from Codespace (GitHub remote already configured); Pages goes live in ~1–2 min
 - Supabase project already configured; `deals` table created; RLS disabled; grants applied
 
 ---
