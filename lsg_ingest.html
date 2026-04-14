@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LSG Deal Ingest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f7f6f4;--surface:#fff;--surface2:#f4f3f1;--surface3:#eeedea;
+  --border:#e5e3df;--border2:#d1cfc9;
+  --text:#1a1917;--muted:#6b6864;--dim:#a8a5a1;--accent:#1a1917;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;--green-text:#15803d;
+  --amber:#b45309;--amber-bg:#fffbeb;--amber-border:#fde68a;--amber-text:#92400e;
+  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;--red-text:#991b1b;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;--blue-border:#bfdbfe;--blue-text:#1e40af;
+  --r:8px;--r-sm:5px;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --sh-lg:0 4px 20px rgba(0,0,0,.09);
+}
+
+body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}
+
+/* ── HEADER ── */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--sh);}
+.hdr-brand{display:flex;align-items:center;gap:10px;}
+.brand-mark{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+.brand-name{font-size:15px;font-weight:600;}
+.brand-sub{font-size:10px;color:var(--dim);margin-top:1px;}
+.hdr-creds{display:flex;align-items:center;gap:8px;}
+.cred-group{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 10px;}
+.cred-label{font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;}
+.cred-input{background:transparent;border:none;outline:none;font-size:11px;color:var(--text);width:170px;}
+.cred-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .2s;}
+.cred-dot.ok{background:var(--green);}
+.nav-link{font-size:11px;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:4px;border:1px solid var(--border);transition:all .15s;}
+.nav-link:hover{color:var(--text);border-color:var(--border2);}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1200px;margin:0 auto;padding:20px 24px;}
+.page-title{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+.page-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:2px;}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:16px;box-shadow:var(--sh);}
+.card-hdr{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.card-title-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);}
+.card-title-dot.active{background:var(--green);}
+.card-body{padding:16px;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r-sm);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#2d2b28;}
+.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+.btn-outline:hover{background:var(--surface2);}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#15803d;}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red-border);}
+.btn-danger:hover{background:var(--red-bg);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-sm{padding:4px 10px;font-size:11px;}
+
+/* ── FILE UPLOAD ── */
+.drop-zone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;transition:all .2s;cursor:pointer;background:var(--surface2);}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--surface3);}
+.drop-zone-icon{font-size:28px;margin-bottom:8px;opacity:.35;}
+.drop-zone-text{font-size:12px;color:var(--muted);}
+.drop-zone-sub{font-size:10px;color:var(--dim);margin-top:3px;}
+
+.file-queue{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.fq-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;display:flex;align-items:center;gap:10px;}
+.fq-icon{font-size:18px;flex-shrink:0;}
+.fq-info{flex:1;min-width:0;}
+.fq-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fq-meta{font-size:10px;color:var(--dim);margin-top:2px;}
+.fq-type{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.type-btn{font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .12s;font-family:'DM Sans',sans-serif;}
+.type-btn.selected{background:var(--accent);border-color:var(--accent);color:#fff;}
+.fq-rm{cursor:pointer;color:var(--dim);padding:4px;border-radius:3px;transition:all .12s;flex-shrink:0;font-size:16px;line-height:1;}
+.fq-rm:hover{color:var(--red);}
+
+/* ── DEAL META FORM ── */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.meta-field{display:flex;flex-direction:column;gap:4px;}
+.meta-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.meta-input,.meta-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 10px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.meta-input:focus,.meta-select:focus{border-color:var(--accent);}
+.meta-select option{background:var(--surface);}
+
+/* ── PIPELINE ── */
+.pipeline{display:flex;flex-direction:column;gap:3px;}
+.pipe-step{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:var(--r);border:1px solid transparent;transition:all .2s;}
+.pipe-step.waiting{opacity:.4;}
+.pipe-step.running{border-color:var(--border2);background:var(--surface2);}
+.pipe-step.done{border-color:var(--green-border);background:var(--green-bg);}
+.pipe-step.error{border-color:var(--red-border);background:var(--red-bg);}
+.pipe-step.skipped{opacity:.35;}
+
+.pipe-num{font-size:10px;font-weight:700;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .2s;color:var(--muted);}
+.pipe-step.running .pipe-num{border-color:var(--accent);color:var(--accent);animation:pulse 1.5s ease-in-out infinite;}
+.pipe-step.done .pipe-num{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+.pipe-step.error .pipe-num{border-color:var(--red);color:var(--red);}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,25,23,.15);}50%{box-shadow:0 0 0 4px rgba(26,25,23,.0);}}
+
+.pipe-content{flex:1;min-width:0;}
+.pipe-label{font-size:12px;font-weight:600;}
+.pipe-desc{font-size:11px;color:var(--muted);margin-top:1px;}
+.pipe-detail{font-size:10px;color:var(--accent);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.pipe-detail.green{color:var(--green);}
+.pipe-detail.red{color:var(--red);}
+.pipe-detail.amber{color:var(--amber);}
+
+.pipe-time{font-size:10px;color:var(--dim);flex-shrink:0;margin-top:3px;}
+
+/* ── SPINNER ── */
+.spin{width:12px;height:12px;border:1.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;display:inline-block;flex-shrink:0;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ── CONFLICT FLAGS ── */
+.conflict-list{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+.conflict-item{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:4px;padding:6px 10px;font-size:11px;color:var(--amber-text);display:flex;gap:8px;}
+.conflict-field{font-weight:700;white-space:nowrap;}
+
+/* ── RESULT PANEL ── */
+.result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.result-stat{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;}
+.result-stat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);}
+.result-stat-val{font-size:18px;font-weight:700;margin-top:3px;}
+.result-stat-val.green{color:var(--green);}
+.result-stat-val.amber{color:var(--amber);}
+
+.schema-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:monospace;font-size:10px;color:var(--muted);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.6;}
+.schema-preview .key{color:var(--blue);}
+.schema-preview .val{color:var(--green);}
+.schema-preview .null-val{color:var(--dim);}
+
+/* ── SCREENER ── */
+.screen-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:3px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.screen-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface);}
+.screen-btn:disabled{opacity:.35;cursor:not-allowed;}
+.verdict-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:opacity .15s;}
+.verdict-badge:hover{opacity:.8;}
+.verdict-PASS{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border);}
+.verdict-WATCH{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border);}
+.verdict-FAIL{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border);}
+.rerun-btn{display:inline-flex;align-items:center;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--dim);transition:all .15s;font-family:'DM Sans',sans-serif;margin-left:4px;}
+.rerun-btn:hover{color:var(--muted);border-color:var(--border2);}
+
+/* Deal detail modal — wider */
+.deal-detail-modal{background:#fff;border-radius:10px;width:100%;max-width:760px;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--sh-lg);}
+.ddm-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0;}
+.ddm-title{font-size:16px;font-weight:600;}
+.ddm-subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+.ddm-body{padding:20px;overflow-y:auto;flex:1;}
+.ddm-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;}
+
+/* Screen result */
+.verdict-banner{border-radius:6px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+.verdict-banner.PASS{background:var(--green-bg);border:1px solid var(--green-border);}
+.verdict-banner.WATCH{background:var(--amber-bg);border:1px solid var(--amber-border);}
+.verdict-banner.FAIL{background:var(--red-bg);border:1px solid var(--red-border);}
+.verdict-word{font-size:24px;font-weight:700;flex-shrink:0;line-height:1;}
+.verdict-banner.PASS .verdict-word{color:var(--green);}
+.verdict-banner.WATCH .verdict-word{color:var(--amber);}
+.verdict-banner.FAIL .verdict-word{color:var(--red);}
+.verdict-rationale{font-size:11px;line-height:1.55;color:var(--text);text-align:right;}
+.screen-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;}
+.screen-metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 12px;position:relative;overflow:hidden;}
+.screen-metric-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.screen-metric-card.pass::after{background:var(--green);}
+.screen-metric-card.fail::after{background:var(--red);}
+.screen-metric-card.watch::after{background:var(--amber);}
+.screen-metric-card.neutral::after{background:var(--border2);}
+.screen-metric-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:4px;}
+.screen-metric-val{font-size:15px;font-weight:700;line-height:1;}
+.screen-metric-card.pass .screen-metric-val{color:var(--green);}
+.screen-metric-card.fail .screen-metric-val{color:var(--red);}
+.screen-metric-card.watch .screen-metric-val{color:var(--amber);}
+.screen-metric-card.neutral .screen-metric-val{color:var(--text);}
+.screen-metric-hurdle{font-size:9px;color:var(--dim);margin-top:3px;}
+.screen-sub{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-bottom:8px;font-size:11px;color:var(--text);line-height:1.55;}
+.screen-sub-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;}
+.screen-risk-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
+.screen-risk-item{display:flex;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:4px;border-left:2px solid;font-size:11px;line-height:1.4;color:var(--text);}
+.screen-risk-item.high{border-color:var(--red);}
+.screen-risk-item.medium{border-color:var(--amber);}
+.screen-risk-item.low{border-color:var(--border2);}
+.screen-risk-sev{font-size:8px;font-weight:700;text-transform:uppercase;padding:2px 5px;border-radius:2px;height:fit-content;flex-shrink:0;margin-top:1px;}
+.screen-risk-item.high .screen-risk-sev{background:var(--red-bg);color:var(--red-text);}
+.screen-risk-item.medium .screen-risk-sev{background:var(--amber-bg);color:var(--amber-text);}
+.screen-risk-item.low .screen-risk-sev{background:var(--surface3);color:var(--dim);}
+.screen-steps{list-style:none;counter-reset:ns;display:flex;flex-direction:column;gap:4px;}
+.screen-step{counter-increment:ns;display:flex;gap:8px;align-items:flex-start;padding:6px 10px;background:var(--surface2);border-radius:4px;font-size:11px;color:var(--text);line-height:1.4;}
+.screen-step::before{content:counter(ns,decimal-leading-zero);font-size:9px;font-weight:700;color:var(--accent);flex-shrink:0;margin-top:1px;}
+
+/* Override inputs */
+.override-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.ov-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block;margin-bottom:3px;}
+.ov-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:6px 8px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .15s;}
+.ov-input:focus{border-color:var(--accent);}
+.ov-hint{font-size:9px;color:var(--dim);margin-top:2px;}
+.screen-progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:8px 0;display:none;}
+.screen-progress.show{display:block;}
+.screen-progress-fill{height:100%;background:var(--accent);width:0%;transition:width .4s ease;}
+.screen-progress-text{font-size:10px;color:var(--muted);margin-bottom:8px;}
+
+.dp-item{display:flex;flex-direction:column;gap:2px;}
+.dp-item-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);}
+.dp-item-value{font-size:12px;font-weight:500;color:var(--text);}
+
+/* Hurdles config card */
+.hurdles-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.hurdle-field{display:flex;flex-direction:column;gap:3px;}
+.hurdle-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.hurdle-input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .15s;width:100%;text-align:center;}
+.hurdle-input:focus{border-color:var(--accent);}
+.hurdle-hint{font-size:9px;color:var(--dim);text-align:center;}
+
+/* ── COMPARE TAB ── */
+.compare-selector{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.compare-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 10px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;cursor:pointer;min-width:220px;transition:border-color .15s;}
+.compare-select:focus{border-color:var(--accent);}
+.compare-select option{background:var(--surface);}
+.compare-scroll{overflow-x:auto;}
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;}
+.compare-table th{padding:10px 14px;text-align:center;font-size:12px;font-weight:600;color:#fff;background:var(--accent);border-right:1px solid rgba(255,255,255,.15);white-space:nowrap;}
+.compare-table th:first-child{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--surface3);min-width:170px;}
+.compare-table th:last-child{border-right:none;}
+.compare-table td{padding:8px 14px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:middle;text-align:center;}
+.compare-table td:first-child{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--surface2);border-right:1px solid var(--border2);text-align:left;}
+.compare-table td:last-child{border-right:none;}
+.compare-table tr:last-child td{border-bottom:none;}
+.compare-table tr:hover td:not(:first-child){background:var(--surface2);}
+.compare-table .section-row td{background:var(--surface3)!important;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding:5px 14px;border-bottom:1px solid var(--border2);text-align:left;}
+.cv-best{color:var(--green);font-weight:700;}
+.cv-worst{color:var(--red);}
+.cv-pass{color:var(--green);font-weight:600;}
+.cv-watch{color:var(--amber);}
+.cv-fail{color:var(--red);}
+.cv-dash{color:var(--dim);}
+
+/* ── PIPELINE TABLE ── */
+.pipeline-scroll{overflow-x:auto;padding:12px 0 0;}
+.deals-table{width:100%;border-collapse:collapse;min-width:1100px;}
+.deals-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+.deals-table th:hover{color:var(--text);}
+.deals-table th .sort-icon{display:inline-block;margin-left:3px;opacity:.35;font-size:9px;}
+.deals-table th.sorted .sort-icon{opacity:1;color:var(--accent);}
+.deals-table td{padding:7px 10px;border-bottom:1px solid var(--border);font-size:11px;vertical-align:middle;white-space:nowrap;}
+.deals-table td.wrap-cell{white-space:normal;min-width:140px;max-width:200px;}
+.deals-table tr:hover td{background:var(--surface2);}
+.deals-table tr:last-child td{border-bottom:none;}
+.deal-name-cell{font-weight:600;font-size:12px;}
+.deal-addr-cell{font-size:10px;color:var(--muted);margin-top:1px;}
+.num-cell{text-align:right;font-variant-numeric:tabular-nums;}
+.dash-cell{color:var(--dim);text-align:center;}
+
+
+.deals-table{width:100%;border-collapse:collapse;}
+.deals-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.deals-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle;}
+.deals-table tr:hover td{background:var(--surface2);}
+.deals-table tr:last-child td{border-bottom:none;}
+.deal-name-cell{font-weight:600;}
+.deal-addr-cell{font-size:11px;color:var(--muted);}
+.tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.04em;}
+.tag-screening{background:var(--blue-bg);color:var(--blue-text);border:1px solid var(--blue-border);}
+.tag-active{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border);}
+.tag-pass{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border);}
+.tag-dead{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border);}
+.tag-type{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.mono-val{font-size:11px;}
+.empty-state{text-align:center;padding:40px;color:var(--dim);}
+.empty-state-icon{font-size:32px;margin-bottom:8px;opacity:.3;}
+.empty-state-text{font-size:12px;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab{padding:8px 16px;font-size:11px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);transition:all .15s;text-transform:uppercase;letter-spacing:.06em;}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.tab:hover{color:var(--text);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ── STATUS BAR ── */
+.status-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r-sm);font-size:12px;margin-top:12px;display:none;}
+.status-bar.show{display:flex;}
+.status-bar.loading{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber-text);}
+.status-bar.success{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green-text);}
+.status-bar.error{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red-text);}
+
+/* ── PROGRESS ── */
+.progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;display:none;}
+.progress.show{display:block;}
+.progress-fill{height:100%;background:var(--accent);width:0%;transition:width .4s ease;}
+
+/* ── SEARCH ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;}
+.search-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 12px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .15s;}
+.search-input:focus{border-color:var(--accent);}
+.filter-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--muted);outline:none;cursor:pointer;}
+.filter-select:focus{border-color:var(--accent);}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:var(--sh-lg);}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.modal-title{font-size:15px;font-weight:600;}
+.modal-body{padding:16px 18px;overflow-y:auto;flex:1;}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--dim);font-size:20px;padding:2px 6px;line-height:1;}
+.modal-close:hover{color:var(--text);}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:16px 0;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="brand-mark">L</div>
+    <div>
+      <div class="brand-name">Lightstone</div>
+      <div class="brand-sub">Deal Ingest Pipeline</div>
+    </div>
+  </div>
+  <div class="hdr-creds">
+    <div class="cred-group">
+      <div class="cred-label">Anthropic</div>
+      <input type="password" class="cred-input" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off" oninput="checkKeys()">
+      <div class="cred-dot" id="ant-dot"></div>
+    </div>
+    <div class="cred-group">
+      <div class="cred-label">Supabase URL</div>
+      <input type="text" class="cred-input" id="sb-url" placeholder="https://xxx.supabase.co" autocomplete="off" oninput="checkKeys()" style="width:200px;">
+      <div class="cred-dot" id="sb-url-dot"></div>
+    </div>
+    <div class="cred-group">
+      <div class="cred-label">Supabase Key</div>
+      <input type="password" class="cred-input" id="sb-key" placeholder="eyJ..." autocomplete="off" oninput="checkKeys()">
+      <div class="cred-dot" id="sb-key-dot"></div>
+    </div>
+    <a href="lsg_one_pager.html" class="nav-link">← One Pager</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-title">Deal Ingest Pipeline</div>
+
+  <div class="tabs" id="main-tabs">
+    <div class="tab active" onclick="switchTab('ingest')">Ingest</div>
+    <div class="tab" onclick="switchTab('pipeline')">Pipeline</div>
+    <div class="tab" onclick="switchTab('compare')">Compare</div>
+    <div class="tab" onclick="switchTab('support')">Support</div>
+  </div>
+
+  <!-- ── INGEST TAB ── -->
+  <div class="tab-pane active" id="tab-ingest">
+
+    <!-- File Upload -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">
+          <div class="card-title-dot active"></div>
+          Source Documents
+        </div>
+        <span style="font-size:10px;color:var(--dim);">PDF or Excel · Max 3 files</span>
+      </div>
+      <div class="card-body">
+        <div class="drop-zone" id="drop-zone"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+          <div class="drop-zone-icon">⬆</div>
+          <div class="drop-zone-text">Drop files here or click to browse</div>
+          <div class="drop-zone-sub">OM · T12 · Rent Roll · Excel Model</div>
+          <input type="file" id="file-input" accept=".pdf,.xlsx,.xls" multiple style="display:none" onchange="filesAdded(event)">
+        </div>
+        <div class="file-queue" id="file-queue"></div>
+      </div>
+    </div>
+
+    <!-- Deal Metadata -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">
+          <div class="card-title-dot"></div>
+          Deal Metadata
+        </div>
+        <span style="font-size:10px;color:var(--dim);">Pre-tag the deal before ingest — AI fills the rest</span>
+      </div>
+      <div class="card-body">
+        <div class="meta-grid">
+          <div class="meta-field">
+            <div class="meta-label">Deal Name / Property</div>
+            <input class="meta-input" id="meta-name" placeholder="e.g. OKC Outlets">
+          </div>
+          <div class="meta-field">
+            <div class="meta-label">Asset Type</div>
+            <select class="meta-select" id="meta-type">
+              <option value="">— Select —</option>
+              <option>Outlet Mall</option>
+              <option>Power Center</option>
+              <option>Strip Center</option>
+              <option>Grocery-Anchored</option>
+              <option>Super-Regional Mall</option>
+              <option>Lifestyle Center</option>
+              <option>Mixed-Use Retail</option>
+              <option>Note / Distressed Debt</option>
+              <option>Mezz / B-Piece</option>
+              <option>Other Retail</option>
+            </select>
+          </div>
+          <div class="meta-field">
+            <div class="meta-label">Status</div>
+            <select class="meta-select" id="meta-status">
+              <option value="Screening">Screening</option>
+              <option value="Active">Active Pursuit</option>
+              <option value="IC">IC / Bid</option>
+              <option value="Due Diligence">Due Diligence</option>
+              <option value="Pass">Pass</option>
+              <option value="Dead">Dead</option>
+            </select>
+          </div>
+          <div class="meta-field">
+            <div class="meta-label">Source Broker</div>
+            <input class="meta-input" id="meta-broker" placeholder="e.g. CBRE, JLL, Newmark">
+          </div>
+          <div class="meta-field">
+            <div class="meta-label">Date Received</div>
+            <input class="meta-input" id="meta-date" type="date">
+          </div>
+          <div class="meta-field">
+            <div class="meta-label">Assigned To</div>
+            <input class="meta-input" id="meta-assignee" placeholder="e.g. Phil, Akiva">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline Status -->
+    <div class="card" id="pipeline-card" style="display:none;">
+      <div class="card-hdr">
+        <div class="card-title">
+          <div class="card-title-dot active" id="pipeline-dot"></div>
+          Ingest Pipeline
+        </div>
+        <span id="pipeline-elapsed" style="font-size:10px;color:var(--dim);"></span>
+      </div>
+      <div class="card-body">
+        <div class="pipeline" id="pipeline-steps"></div>
+        <div class="progress" id="ingest-progress"><div class="progress-fill" id="ingest-fill"></div></div>
+        <div class="status-bar" id="ingest-status"></div>
+
+        <!-- Conflict flags surface here -->
+        <div id="conflict-section" style="display:none;">
+          <div class="divider"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--amber);margin-bottom:6px;">⚠ Conflicts Detected</div>
+          <div class="conflict-list" id="conflict-list"></div>
+        </div>
+
+        <!-- Result summary -->
+        <div id="result-section" style="display:none;">
+          <div class="divider"></div>
+          <div class="result-grid" id="result-grid"></div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Extracted JSON Preview</div>
+          <div class="schema-preview" id="schema-preview"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-green" id="save-btn" onclick="saveToDB()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save to Pipeline Database
+            </button>
+            <button class="btn btn-outline" onclick="openInOnePager()">
+              Open in One Pager →
+            </button>
+            <button class="btn btn-ghost" onclick="resetIngest()">New Deal</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Row -->
+    <div style="display:flex;align-items:center;gap:10px;" id="ingest-action-row">
+      <button class="btn btn-primary" id="ingest-btn" onclick="runIngest()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Run Ingest Pipeline
+      </button>
+      <span style="font-size:11px;color:var(--dim);" id="ingest-hint">Add files and configure credentials to begin</span>
+    </div>
+
+  </div><!-- end ingest tab -->
+
+
+  <!-- ── PIPELINE TAB ── -->
+  <div class="tab-pane" id="tab-pipeline">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">
+          <div class="card-title-dot active"></div>
+          Deal Pipeline
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="loadDeals()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div style="padding:12px 16px 0;">
+          <input class="search-input" id="search-input" placeholder="Search address, market, broker..." oninput="filterDeals()" style="width:100%;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="filter-select" id="filter-status" onchange="filterDeals()">
+              <option value="">All Stages</option>
+              <option>Screening</option>
+              <option>Active</option>
+              <option>IC</option>
+              <option>Due Diligence</option>
+              <option>Pass</option>
+              <option>Dead</option>
+            </select>
+            <select class="filter-select" id="filter-type" onchange="filterDeals()">
+              <option value="">All Types</option>
+              <option>Outlet Mall</option>
+              <option>Power Center</option>
+              <option>Strip Center</option>
+              <option>Grocery-Anchored</option>
+              <option>Super-Regional Mall</option>
+              <option>Lifestyle Center</option>
+              <option>Note / Distressed Debt</option>
+              <option>Mezz / B-Piece</option>
+            </select>
+            <select class="filter-select" id="filter-market" onchange="filterDeals()">
+              <option value="">All Markets</option>
+            </select>
+            <span id="deal-count-inline" style="margin-left:auto;font-size:11px;color:var(--dim);align-self:center;"></span>
+          </div>
+        </div>
+        <div id="deals-container" style="padding:12px 0 0;">
+          <div class="empty-state">
+            <div class="empty-state-icon">🗄</div>
+            <div class="empty-state-text">Connect Supabase to load your pipeline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COMPARE TAB ── -->
+  <div class="tab-pane" id="tab-compare">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">
+          <div class="card-title-dot active"></div>
+          Side-by-Side Comparison
+        </div>
+        <span style="font-size:10px;color:var(--dim);">Select 2–3 deals to compare</span>
+      </div>
+      <div class="card-body">
+        <div class="compare-selector">
+          <select class="compare-select" id="compare-a" onchange="renderCompare()">
+            <option value="">— Select Deal A —</option>
+          </select>
+          <select class="compare-select" id="compare-b" onchange="renderCompare()">
+            <option value="">— Select Deal B —</option>
+          </select>
+          <select class="compare-select" id="compare-c" onchange="renderCompare()">
+            <option value="">— Deal C (optional) —</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="clearCompare()">Clear</button>
+        </div>
+        <div id="compare-container">
+          <div class="empty-state">
+            <div class="empty-state-icon">⚖️</div>
+            <div class="empty-state-text">Select at least 2 deals to compare</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end compare tab -->
+
+  <!-- ── SUPPORT TAB ── -->
+  <div class="tab-pane" id="tab-support">
+
+    <!-- Screening Hurdles -->
+    <div class="card">
+      <div class="card-hdr" style="cursor:pointer;" onclick="toggleGuide('guide-hurdles','toggle-hurdles')">
+        <div class="card-title">
+          <div class="card-title-dot active"></div>
+          Screening Hurdles
+        </div>
+        <span id="toggle-hurdles" style="font-size:10px;color:var(--dim);">▼ expand</span>
+      </div>
+      <div id="guide-hurdles" style="display:none;">
+        <div class="card-body">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">These thresholds are used by the AI Screener to evaluate deals. Changes save automatically and apply to all future screens.</div>
+          <div class="hurdles-grid">
+            <div class="hurdle-field">
+              <div class="hurdle-label">Going-In Cap</div>
+              <input class="hurdle-input" id="hurdle-cap" type="number" step="0.25" min="0" placeholder="8.50" oninput="saveHurdles()">
+              <div class="hurdle-hint">Minimum %</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Levered IRR</div>
+              <input class="hurdle-input" id="hurdle-irr" type="number" step="0.5" min="0" placeholder="15.0" oninput="saveHurdles()">
+              <div class="hurdle-hint">Minimum %</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Cash-on-Cash</div>
+              <input class="hurdle-input" id="hurdle-coc" type="number" step="0.5" min="0" placeholder="10.0" oninput="saveHurdles()">
+              <div class="hurdle-hint">Minimum % (Y1)</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Debt Yield</div>
+              <input class="hurdle-input" id="hurdle-dy" type="number" step="0.25" min="0" placeholder="8.0" oninput="saveHurdles()">
+              <div class="hurdle-hint">Minimum %</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">DSCR</div>
+              <input class="hurdle-input" id="hurdle-dscr" type="number" step="0.05" min="0" placeholder="1.25" oninput="saveHurdles()">
+              <div class="hurdle-hint">Minimum ratio</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Max LTV</div>
+              <input class="hurdle-input" id="hurdle-ltv" type="number" step="1" min="0" placeholder="75" oninput="saveHurdles()">
+              <div class="hurdle-hint">Maximum %</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Assumed Rate</div>
+              <input class="hurdle-input" id="hurdle-rate" type="number" step="0.25" min="0" placeholder="6.50" oninput="saveHurdles()">
+              <div class="hurdle-hint">Debt rate % (if unknown)</div>
+            </div>
+            <div class="hurdle-field">
+              <div class="hurdle-label">Assumed LTV</div>
+              <input class="hurdle-input" id="hurdle-assumedltv" type="number" step="1" min="0" placeholder="65" oninput="saveHurdles()">
+              <div class="hurdle-hint">% (if no debt terms)</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+            <button class="btn btn-ghost btn-sm" onclick="resetHurdles()">Reset to Defaults</button>
+            <span id="hurdles-saved" style="font-size:10px;color:var(--green);display:none;">✓ Saved</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supabase Setup Guide -->
+    <div class="card">
+      <div class="card-hdr" style="cursor:pointer;" onclick="toggleGuide('guide-supabase','toggle-supabase')">
+        <div class="card-title">
+          <div class="card-title-dot"></div>
+          Supabase Setup Guide
+        </div>
+        <span id="toggle-supabase" style="font-size:10px;color:var(--dim);">▼ expand</span>
+      </div>
+      <div id="guide-supabase" style="display:none;">
+        <div class="card-body" style="font-size:12px;line-height:1.8;">
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">1 — Create a Supabase project</div>
+            <div style="color:var(--muted);">Go to <span style="font-family:monospace;color:var(--accent);">supabase.com</span> → New Project → choose a region close to you (US East recommended). Free tier is sufficient.</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">2 — Create the deals table</div>
+            <div style="color:var(--muted);margin-bottom:6px;">Go to <strong>SQL Editor</strong> in your Supabase project and run this:</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:monospace;font-size:10px;color:var(--text);white-space:pre;overflow-x:auto;">CREATE TABLE deals (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ingested_at    TIMESTAMPTZ DEFAULT now(),
+  deal_name      TEXT,
+  address        TEXT,
+  asset_type     TEXT,
+  purchase_price NUMERIC,
+  going_in_cap   NUMERIC,
+  irr_levered_5  NUMERIC,
+  moic_5         NUMERIC,
+  status         TEXT DEFAULT 'Screening',
+  source_broker  TEXT,
+  assignee       TEXT,
+  source_files   TEXT[],
+  schema_version TEXT,
+  raw_data       JSONB
+);</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">3 — Disable Row Level Security <span style="color:var(--red);font-size:11px;">(required)</span></div>
+            <div style="color:var(--muted);margin-bottom:6px;">In the same SQL Editor, run:</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:monospace;font-size:10px;color:var(--text);">ALTER TABLE deals DISABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON TABLE deals TO anon;
+GRANT ALL ON TABLE deals TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;</div>
+            <div style="color:var(--dim);font-size:11px;margin-top:4px;">This is an internal tool — RLS is unnecessary and causes silent insert failures with the anon key.</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">4 — Get your credentials</div>
+            <div style="color:var(--muted);">Go to <strong>Settings → API</strong> in your Supabase project:</div>
+            <ul style="color:var(--muted);padding-left:16px;margin-top:4px;">
+              <li><strong>Project URL</strong> — looks like <span style="font-family:monospace;color:var(--accent);">https://abcdefgh.supabase.co</span></li>
+              <li><strong>anon public key</strong> — the long <span style="font-family:monospace;color:var(--accent);">eyJ...</span> key (not the service role key)</li>
+            </ul>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">5 — Enter credentials in the header</div>
+            <div style="color:var(--muted);">Paste both into the credential fields at the top of this page. They save automatically to localStorage.</div>
+          </div>
+
+          <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r);padding:10px 12px;margin-top:4px;font-size:11px;color:var(--amber-text);">
+            <strong>Common errors:</strong> NetworkError = RLS not disabled or wrong URL format. 401 = wrong API key. 404 = table not created yet. 403 = RLS policy blocking insert.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Anthropic API Key Guide -->
+    <div class="card">
+      <div class="card-hdr" style="cursor:pointer;" onclick="toggleGuide('guide-anthropic','toggle-anthropic')">
+        <div class="card-title">
+          <div class="card-title-dot"></div>
+          Getting Your Anthropic API Key
+        </div>
+        <span id="toggle-anthropic" style="font-size:10px;color:var(--dim);">▼ expand</span>
+      </div>
+      <div id="guide-anthropic" style="display:none;">
+        <div class="card-body" style="font-size:12px;line-height:1.8;">
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">1 — Create an Anthropic account</div>
+            <div style="color:var(--muted);">Go to <span style="font-family:monospace;color:var(--accent);">console.anthropic.com</span> and sign up or log in.</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">2 — Generate an API key</div>
+            <div style="color:var(--muted);">Go to <strong>API Keys</strong> in the left sidebar → <strong>Create Key</strong> → give it a name (e.g. "LSG Tools") → copy the key immediately. It will not be shown again.</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:600;margin-bottom:4px;">3 — Add a payment method</div>
+            <div style="color:var(--muted);">Go to <strong>Billing</strong> → add a credit card. The API is pay-as-you-go. A full OM ingest (two-agent pipeline) costs approximately <strong>$0.03–0.08</strong> per deal depending on document size.</div>
+          </div>
+
+          <div style="margin-bottom:6px;">
+            <div style="font-weight:600;margin-bottom:4px;">4 — Paste into the header</div>
+            <div style="color:var(--muted);">Paste your key (starts with <span style="font-family:monospace;color:var(--accent);">sk-ant-</span>) into the Anthropic field at the top of this page. It saves automatically to localStorage — you only need to do this once per browser.</div>
+          </div>
+
+          <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r);padding:10px 12px;margin-top:12px;font-size:11px;color:var(--amber-text);">
+            <strong>Keep your key private.</strong> Do not commit it to GitHub or share it. It has the same access as a password to your Anthropic account.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end support tab -->
+
+</div><!-- wrap -->
+
+<!-- DEAL DETAIL MODAL -->
+<div class="modal-overlay" id="deal-modal">
+  <div class="deal-detail-modal">
+    <div class="ddm-header">
+      <div>
+        <div class="ddm-title" id="modal-deal-name">Deal Detail</div>
+        <div class="ddm-subtitle" id="modal-deal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="ddm-body" id="modal-body"></div>
+    <div class="ddm-footer" id="modal-footer">
+      <button class="btn btn-outline" id="modal-op-btn" onclick="">Open in One Pager →</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ───────────────────────────────────────────────────────────────
+const KEYS = {ant:'lsg_ant_key', sbUrl:'lsg_sb_url', sbKey:'lsg_sb_key'};
+const DEALS_TABLE = 'deals';
+let ingestResult = null;
+let allDeals = [];
+
+// ── CREDENTIAL MANAGEMENT ───────────────────────────────────────────────────
+function getAntKey(){ return document.getElementById('anthropic-key').value.trim(); }
+function getSbUrl(){  return document.getElementById('sb-url').value.trim().replace(/\/$/,''); }
+function getSbKey(){  return document.getElementById('sb-key').value.trim(); }
+
+function checkKeys(){
+  const ant = getAntKey();
+  const url = getSbUrl();
+  const key = getSbKey();
+  document.getElementById('ant-dot').className = 'cred-dot' + (ant.startsWith('sk-')?' ok':'');
+  document.getElementById('sb-url-dot').className = 'cred-dot' + (url.startsWith('https://')?' ok':'');
+  document.getElementById('sb-key-dot').className = 'cred-dot' + (key.length > 20?' ok':'');
+  try{
+    if(ant.startsWith('sk-')) localStorage.setItem(KEYS.ant, ant);
+    if(url.startsWith('https://')) localStorage.setItem(KEYS.sbUrl, url);
+    if(key.length > 20) localStorage.setItem(KEYS.sbKey, key);
+  }catch{}
+  updateIngestBtn();
+}
+
+function updateIngestBtn(){
+  const hasFiles = srcFiles.length > 0;
+  const hasKeys = getAntKey().startsWith('sk-') && getSbUrl().startsWith('https://') && getSbKey().length > 20;
+  const btn = document.getElementById('ingest-btn');
+  btn.disabled = !hasFiles || !hasKeys;
+  const hint = document.getElementById('ingest-hint');
+  if(!getAntKey().startsWith('sk-')) hint.textContent = 'Anthropic API key required';
+  else if(!getSbUrl().startsWith('https://')) hint.textContent = 'Supabase URL required';
+  else if(getSbKey().length <= 20) hint.textContent = 'Supabase anon key required';
+  else if(!hasFiles) hint.textContent = 'Add at least one document to ingest';
+  else hint.textContent = `${srcFiles.length} file${srcFiles.length>1?'s':''} ready · Pipeline: Reader → Standardizer → Supabase`;
+}
+
+// ── FILE HANDLING ────────────────────────────────────────────────────────────
+const FILE_TYPES = ['OM','T12','Rent Roll','Excel Model','Other'];
+let srcFiles = [];
+
+function dzOver(e){ e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function dzLeave(e){ document.getElementById('drop-zone').classList.remove('drag-over'); }
+function dzDrop(e){
+  e.preventDefault();
+  dzLeave(e);
+  addFiles([...e.dataTransfer.files]);
+}
+function filesAdded(e){ addFiles([...e.target.files]); e.target.value=''; }
+function addFiles(files){
+  files.forEach(f => {
+    if(srcFiles.length >= 3) return;
+    if(srcFiles.find(x=>x.file.name===f.name)) return;
+    const n = f.name.toLowerCase();
+    let type = 'OM';
+    if(n.includes('t12')||n.includes('trailing')) type='T12';
+    else if(n.includes('rent')||n.includes('roll')||n.includes('rr')) type='Rent Roll';
+    else if((n.endsWith('.xlsx')||n.endsWith('.xls'))&&!n.includes('om')) type='Excel Model';
+    srcFiles.push({file:f, type});
+  });
+  renderQueue();
+  updateIngestBtn();
+}
+function setType(i, t){ srcFiles[i].type=t; renderQueue(); }
+function removeFile(i){ srcFiles.splice(i,1); renderQueue(); updateIngestBtn(); }
+
+function renderQueue(){
+  const q = document.getElementById('file-queue');
+  if(srcFiles.length===0){q.innerHTML='';return;}
+  q.innerHTML = srcFiles.map((item,i)=>{
+    const isPDF = item.file.name.toLowerCase().endsWith('.pdf');
+    const sizeMB = (item.file.size/1024/1024).toFixed(1);
+    const typeBtns = FILE_TYPES.map(t=>`<span class="type-btn${t===item.type?' selected':''}" onclick="setType(${i},'${t}')">${t}</span>`).join('');
+    return `<div class="fq-item">
+      <span class="fq-icon">${isPDF?'📄':'📊'}</span>
+      <div class="fq-info">
+        <div class="fq-name">${esc(item.file.name)}</div>
+        <div class="fq-meta">${sizeMB} MB · Tag as:</div>
+        <div class="fq-type">${typeBtns}</div>
+      </div>
+      <span class="fq-rm" onclick="removeFile(${i})">×</span>
+    </div>`;
+  }).join('');
+}
+
+// ── FILE CONTENT PREP ────────────────────────────────────────────────────────
+async function prepareContent(file){
+  const n = file.name.toLowerCase();
+  if(n.endsWith('.xlsx')||n.endsWith('.xls')){
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab,{type:'array'});
+    const parts = wb.SheetNames.map(sn=>`=== Sheet: ${sn} ===\n${XLSX.utils.sheet_to_csv(wb.Sheets[sn],{blankrows:false})}`);
+    return {type:'text', text:`Excel model (all sheets as CSV):\n\n${parts.join('\n\n')}`};
+  }
+  const b64 = await new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload=()=>{const s=String(r.result||'');res(s.includes(',')?s.split(',')[1]:s);};
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+  return {type:'document', source:{type:'base64', media_type:'application/pdf', data:b64}};
+}
+
+// ── PIPELINE STEP RENDERER ───────────────────────────────────────────────────
+const STEPS = [
+  {id:'read',       label:'Agent 1 — Reader',         desc:'Reading all source documents and producing a comprehensive narrative'},
+  {id:'standardize',label:'Agent 2 — Standardizer',   desc:'Mapping narrative to LSG schema and detecting conflicts'},
+  {id:'validate',   label:'Schema Validation',         desc:'Verifying JSON structure and field completeness'},
+  {id:'save',       label:'Supabase Write',            desc:'Persisting deal record to pipeline database'},
+];
+
+let stepTimers = {};
+
+function renderPipelineSteps(states){
+  // states: {stepId: 'waiting'|'running'|'done'|'error'|'skipped', detail:'...'}
+  document.getElementById('pipeline-steps').innerHTML = STEPS.map(s=>{
+    const state = states[s.id] || 'waiting';
+    const detail = states[s.id+'_detail'] || '';
+    const timeEl = stepTimers[s.id] ? `<div class="pipe-time">${stepTimers[s.id]}s</div>` : '';
+    const numContent = state==='done'?'✓' : state==='error'?'✕' : state==='running'?'<div class="spin"></div>' : STEPS.findIndex(x=>x.id===s.id)+1;
+    const detailClass = state==='error'?'red' : state==='done'?'green' : '';
+    return `<div class="pipe-step ${state}">
+      <div class="pipe-num">${numContent}</div>
+      <div class="pipe-content">
+        <div class="pipe-label">${s.label}</div>
+        <div class="pipe-desc">${s.desc}</div>
+        ${detail?`<div class="pipe-detail ${detailClass}">${esc(detail)}</div>`:''}
+      </div>
+      ${timeEl}
+    </div>`;
+  }).join('');
+}
+
+// ── AGENT SYSTEM PROMPTS ─────────────────────────────────────────────────────
+const READER_SYSTEM = `You are a senior acquisitions analyst at Lightstone Group. Your job is to READ a commercial real estate offering memorandum (or financial document) and produce a comprehensive, faithful narrative summary.
+
+CRITICAL RULES:
+- Do NOT extract into JSON yet
+- Do NOT impose any structure on the data
+- Faithfully represent what the document actually says, in the document's own organization
+- Note WHERE information appears (e.g. "Page 3 executive summary states...", "The rent roll table on page 14 shows...")
+- Capture the broker's exact language for thesis, upside, and risk — do not paraphrase
+- Flag any internal inconsistencies you notice (e.g. occupancy stated as 95% on page 1 but rent roll implies 91%)
+- Note anything that appears in footnotes, asterisks, or qualifications
+- If multiple documents are provided, treat each separately then note cross-document observations
+
+Your output will be passed to a second agent for standardization. The richer and more faithful your summary, the better the final extraction.
+
+Structure your output as:
+1. DOCUMENT OVERVIEW (type, broker, date, page count if determinable)
+2. PROPERTY SUMMARY (what the document says about the physical asset)
+3. INVESTMENT THESIS (broker's exact stated thesis and upside scenarios)
+4. FINANCIAL SUMMARY (all numbers mentioned — NOI, cap rate, price, returns — with source location)
+5. TENANCY (all tenant information — full roster if available, or described as presented)
+6. CAPITAL STACK (debt assumptions, terms, sources & uses)
+7. MARKET & DEMOGRAPHICS (submarket characterization, comps, demographics)
+8. RISKS DISCLOSED (anything the broker flags as a risk, however buried)
+9. INCONSISTENCIES NOTED (any data conflicts you identified across the document)
+10. MISSING INFORMATION (fields you would expect in an OM of this type that were absent)`;
+
+const STANDARDIZER_SYSTEM = `You are a senior acquisitions analyst at Lightstone Group. You will receive a narrative summary of a commercial real estate document produced by a reader agent. Your job is to map this narrative into the LSG standard JSON schema.
+
+CRITICAL RULES:
+- Return ONLY valid JSON — no markdown, no code fences, no preamble
+- Use null for any field not present in the narrative
+- For conflicts flagged by the reader, use the more conservative/reliable figure and note it in the conflict_flags array
+- Do not invent or estimate data not present in the narrative
+- Preserve the broker's exact language in text fields (thesis, description, risk narrative)
+- For lease_abstracts, extract every tenant mentioned — not just top tenants
+- Health ratio = annual rent / annual sales (if sales disclosed)
+
+Return this exact structure:
+{
+  "schema_version": "2.0",
+  "deal_name": "",
+  "address": "",
+  "city": "",
+  "state": "",
+  "mode": "CONSERVATIVE",
+  "property": {
+    "type": "",
+    "size_sf": "",
+    "acreage": "",
+    "occupancy": "",
+    "economic_occupancy": "",
+    "tenant_count": "",
+    "walt": "",
+    "vintage": "",
+    "buildings": "",
+    "class": "",
+    "parking_ratio": "",
+    "zoning": ""
+  },
+  "transaction": {
+    "status": "Screening",
+    "strategy": "",
+    "seller": "",
+    "sourcing": "",
+    "ask_price": "",
+    "ask_price_psf": "",
+    "bid_deadline": "",
+    "call_for_offers": ""
+  },
+  "investment_thesis": {
+    "broker_headline": "",
+    "stated_upside": [],
+    "repositioning_narrative": "",
+    "value_add_components": [],
+    "comp_set_referenced": [],
+    "disclosed_risks": [],
+    "broker_NOI_adjustment_narrative": ""
+  },
+  "scorecard": {
+    "overall_grade": null,
+    "market_grade": null,
+    "property_grade": null,
+    "location_grade": null,
+    "business_plan_grade": null,
+    "description": "",
+    "kpis": []
+  },
+  "returns": {
+    "going_in_yield_cost": "",
+    "going_in_cap": "",
+    "stable_yield_y11": "",
+    "avg_yield_5yr": "",
+    "avg_yield_10yr": "",
+    "hold_period_1": "5",
+    "hold_period_2": "10",
+    "irr_unlevered_5": "",
+    "irr_unlevered_10": "",
+    "irr_levered_5": "",
+    "irr_levered_10": "",
+    "irr_net_5": "",
+    "irr_net_10": "",
+    "net_profit_5": "",
+    "net_profit_10": "",
+    "moic_5": "",
+    "moic_10": "",
+    "coc_pre_refi_5": "",
+    "coc_pre_refi_10": ""
+  },
+  "valuation": {
+    "stable_value_psf_today": "",
+    "stable_value_psf_5yr": "",
+    "stable_value_psf_10yr": "",
+    "stable_cap_rate": "",
+    "stable_cap_expansion": "",
+    "exit_cap_5yr": "",
+    "exit_cap_10yr": "",
+    "mtm_exit_cap_5yr": ""
+  },
+  "sources_uses": {
+    "purchase_price": "",
+    "purchase_price_psf": "",
+    "closing_costs": "",
+    "reserves_at_close": "",
+    "total_at_closing": "",
+    "ticl_costs": "",
+    "capex_costs": "",
+    "total_post_closing": "",
+    "total_uses": "",
+    "senior_debt_initial": "",
+    "senior_debt_pct": "",
+    "lightstone_initial": "",
+    "lightstone_pct": "",
+    "total_initial": ""
+  },
+  "capital_sources": {
+    "proceeds_at_close": "",
+    "ltpp": "",
+    "ltc": "",
+    "ltv": "",
+    "fixed_floating": "",
+    "benchmark": "",
+    "index": "",
+    "spread": "",
+    "effective_rate": "",
+    "rate_cap": "",
+    "term_years": "",
+    "io_period_years": "",
+    "amortization": "",
+    "debt_yield": "",
+    "dscr": ""
+  },
+  "top_tenants": [
+    {"name":"","parent_company":"","sf":"","sf_pct":"","move_in":"","expiration":"","in_place_rent":"","market_rent":"","mtm_pct":"","options":"","termination_rights":"","co_tenancy":"","percentage_rent":"","guarantee_type":"","sales_psf":"","health_ratio":"","credit_watch":false}
+  ],
+  "lease_abstracts": [
+    {"tenant":"","sf":"","commencement":"","expiration":"","base_rent_psf":"","rent_steps":[],"options":[],"termination_rights":"","co_tenancy_requirement":"","guarantee_type":"","sales_psf":"","health_ratio":""}
+  ],
+  "by_size": [
+    {"category":"","national_pct":"","in_place_rent":"","market_rent":"","mtm_pct":"","walt":"","sf":"","rev_pct":"","sales_psf":"","health_ratio":""}
+  ],
+  "cash_flows": {
+    "years": [],
+    "period_ending": [],
+    "gross_potential_rent": [],
+    "opex_reimbursements": [],
+    "vacancy_loss": [],
+    "effective_gross_income": [],
+    "other_income": [],
+    "total_revenue": [],
+    "operating_expenses": [],
+    "noi": [],
+    "total_capex_leasing": [],
+    "cfbds": [],
+    "debt_service": [],
+    "cfads": [],
+    "yield_on_cost": [],
+    "cash_on_cash": []
+  },
+  "market": {
+    "submarket": "",
+    "gs_grade": "",
+    "avg_rent_growth_10yr": "",
+    "avg_rent_growth_20yr": "",
+    "inventory_total": "",
+    "vacancy_total": "",
+    "market_growth_2026": "",
+    "market_growth_2027": "",
+    "market_growth_2028": "",
+    "market_growth_2029": "",
+    "market_growth_2030": "",
+    "lsg_uw_growth": ""
+  },
+  "income_assumptions": {
+    "general_vacancy": "",
+    "credit_loss": "",
+    "annual_escalations": "",
+    "mla_term_small": "",
+    "mla_renew_prob_small": "",
+    "mla_market_rent_small": "",
+    "mla_ti_new_small": "",
+    "mla_lc_new_small": "",
+    "mla_free_rent_new": ""
+  },
+  "sensitivity": [],
+  "demographics": {
+    "pop_30": "", "pop_50": "", "pop_70": "",
+    "hh_30": "", "hh_50": "", "hh_70": "",
+    "hh_med_inc_30": "", "hh_med_inc_50": "", "hh_med_inc_70": "",
+    "med_home_val_30": "", "med_home_val_50": "", "med_home_val_70": "",
+    "crime_vs_natl_30": "",
+    "traffic_streets": []
+  },
+  "expenses": {
+    "ret_insurance_psf": "",
+    "cam_psf": "",
+    "management_pct": "",
+    "other_psf": "",
+    "capex_schedule": []
+  },
+  "tenant_use_type": [],
+  "deal_risks": {
+    "anchor_expiry_risk": "",
+    "credit_watch_tenants": [],
+    "deferred_maintenance": "",
+    "legal_disclosed": null,
+    "environmental_disclosed": null,
+    "title_issues": null,
+    "market_headwinds": "",
+    "broker_NOI_bridge_risk": ""
+  },
+  "conflict_flags": [
+    {"field":"","source_a_value":"","source_b_value":"","resolution":"","note":""}
+  ],
+  "extraction_meta": {
+    "schema_version": "2.0",
+    "fields_populated": 0,
+    "fields_null": 0,
+    "confidence": "high|medium|low",
+    "source_docs": [],
+    "conflicts_detected": 0
+  }
+}`;
+
+// ── MAIN INGEST PIPELINE ─────────────────────────────────────────────────────
+let pipelineState = {};
+let pipelineStart = null;
+let elapsedTimer = null;
+
+async function runIngest(){
+  if(srcFiles.length===0) return;
+  if(!getAntKey().startsWith('sk-')){ alert('Anthropic API key required.'); return; }
+  if(!getSbUrl().startsWith('https://')){ alert('Supabase URL required.'); return; }
+  if(getSbKey().length <= 20){ alert('Supabase anon key required.'); return; }
+
+  ingestResult = null;
+  document.getElementById('pipeline-card').style.display='block';
+  document.getElementById('ingest-btn').disabled=true;
+  document.getElementById('conflict-section').style.display='none';
+  document.getElementById('result-section').style.display='none';
+  document.getElementById('ingest-status').className='status-bar';
+  setProgress(0);
+
+  pipelineStart = Date.now();
+  elapsedTimer = setInterval(()=>{
+    const s = ((Date.now()-pipelineStart)/1000).toFixed(0);
+    document.getElementById('pipeline-elapsed').textContent = s+'s elapsed';
+  }, 500);
+
+  // ── STEP 1: READER AGENT ──
+  pipelineState = {read:'running'};
+  renderPipelineSteps(pipelineState);
+  setProgress(10);
+  const readStart = Date.now();
+
+  let narrative = '';
+  try{
+    const contentBlocks = [];
+    for(const item of srcFiles){
+      contentBlocks.push({type:'text', text:`--- Document: ${item.file.name} (Type: ${item.type}) ---`});
+      contentBlocks.push(await prepareContent(item.file));
+    }
+    contentBlocks.push({type:'text', text:'Please read all provided documents carefully and produce a comprehensive narrative summary following your instructions. Be thorough — this narrative will be the sole input for a standardization agent.'});
+
+    const r1 = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAntKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:8000, system:READER_SYSTEM, messages:[{role:'user',content:contentBlocks}]})
+    });
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1?.error?.message||`API error ${r1.status}`);
+    narrative = d1.content?.find(b=>b.type==='text')?.text||'';
+    if(!narrative) throw new Error('Reader agent returned empty response');
+
+    stepTimers.read = ((Date.now()-readStart)/1000).toFixed(1);
+    const wordCount = narrative.split(/\s+/).length;
+    pipelineState.read = 'done';
+    pipelineState.read_detail = `${wordCount.toLocaleString()} word narrative produced`;
+  } catch(e){
+    pipelineState.read = 'error';
+    pipelineState.read_detail = e.message;
+    pipelineState.standardize = 'skipped';
+    pipelineState.validate = 'skipped';
+    pipelineState.save = 'skipped';
+    renderPipelineSteps(pipelineState);
+    showStatus('error', 'Reader agent failed: '+e.message);
+    finishPipeline();
+    return;
+  }
+
+  // ── STEP 2: STANDARDIZER AGENT ──
+  pipelineState.standardize = 'running';
+  renderPipelineSteps(pipelineState);
+  setProgress(40);
+  const stdStart = Date.now();
+
+  let extracted = null;
+  try{
+    const metaContext = buildMetaContext();
+    const r2 = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAntKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:16000, system:STANDARDIZER_SYSTEM,
+        messages:[{role:'user',content:`${metaContext}\n\nHere is the reader agent narrative:\n\n${narrative}\n\nMap this to the LSG JSON schema. Return only valid JSON.`}]
+      })
+    });
+    const d2 = await r2.json();
+    if(!r2.ok) throw new Error(d2?.error?.message||`API error ${r2.status}`);
+    const raw = d2.content?.find(b=>b.type==='text')?.text||'';
+    extracted = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    // Merge user-supplied metadata
+    applyMetadata(extracted);
+
+    stepTimers.standardize = ((Date.now()-stdStart)/1000).toFixed(1);
+    const populated = countPopulated(extracted);
+    const conflicts = (extracted.conflict_flags||[]).filter(c=>c.field).length;
+    pipelineState.standardize = 'done';
+    pipelineState.standardize_detail = `${populated} fields populated · ${conflicts} conflict${conflicts!==1?'s':''} detected`;
+
+    // Surface conflicts
+    if(conflicts > 0){
+      document.getElementById('conflict-section').style.display='block';
+      document.getElementById('conflict-list').innerHTML = extracted.conflict_flags.filter(c=>c.field).map(c=>`
+        <div class="conflict-item">
+          <span class="conflict-field">${esc(c.field)}</span>
+          <span>${esc(c.source_a_value)} vs ${esc(c.source_b_value)} — ${esc(c.resolution)}</span>
+        </div>`).join('');
+    }
+  } catch(e){
+    pipelineState.standardize = 'error';
+    pipelineState.standardize_detail = e.message;
+    pipelineState.validate = 'skipped';
+    pipelineState.save = 'skipped';
+    renderPipelineSteps(pipelineState);
+    showStatus('error', 'Standardizer agent failed: '+e.message);
+    finishPipeline();
+    return;
+  }
+
+  // ── STEP 3: SCHEMA VALIDATION ──
+  pipelineState.validate = 'running';
+  renderPipelineSteps(pipelineState);
+  setProgress(70);
+
+  try{
+    const issues = validateSchema(extracted);
+    stepTimers.validate = '0.0';
+    if(issues.length > 0){
+      pipelineState.validate = 'done';
+      pipelineState.validate_detail = `${issues.length} warning${issues.length!==1?'s':''}: ${issues.slice(0,2).join(', ')}`;
+    } else {
+      pipelineState.validate = 'done';
+      pipelineState.validate_detail = 'Schema valid — all required fields present';
+    }
+  } catch(e){
+    pipelineState.validate = 'error';
+    pipelineState.validate_detail = e.message;
+  }
+
+  renderPipelineSteps(pipelineState);
+  ingestResult = extracted;
+  setProgress(85);
+
+  // ── STEP 4: AUTO-SAVE ──
+  pipelineState.save = 'running';
+  renderPipelineSteps(pipelineState);
+  const saveStart = Date.now();
+
+  try{
+    const dealId = await writeToSupabase(extracted);
+    stepTimers.save = ((Date.now()-saveStart)/1000).toFixed(1);
+    pipelineState.save = 'done';
+    pipelineState.save_detail = `Saved · deal_id: ${dealId}`;
+    extracted._deal_id = dealId;
+  } catch(e){
+    stepTimers.save = ((Date.now()-saveStart)/1000).toFixed(1);
+    pipelineState.save = 'error';
+    pipelineState.save_detail = 'DB write failed: '+e.message+' — use Save button to retry';
+  }
+
+  renderPipelineSteps(pipelineState);
+  setProgress(100);
+
+  // Show result summary
+  showResultSummary(extracted);
+  document.getElementById('result-section').style.display='block';
+  showStatus('success', `Ingest complete — ${extracted.deal_name||'Deal'} saved to pipeline database`);
+  finishPipeline();
+}
+
+function buildMetaContext(){
+  const name = document.getElementById('meta-name').value.trim();
+  const type = document.getElementById('meta-type').value;
+  const status = document.getElementById('meta-status').value;
+  const broker = document.getElementById('meta-broker').value.trim();
+  const date = document.getElementById('meta-date').value;
+  const assignee = document.getElementById('meta-assignee').value.trim();
+  const parts = [];
+  if(name) parts.push(`Deal Name (pre-tagged by analyst): ${name}`);
+  if(type) parts.push(`Asset Type (pre-tagged): ${type}`);
+  if(status) parts.push(`Status (pre-tagged): ${status}`);
+  if(broker) parts.push(`Source Broker (pre-tagged): ${broker}`);
+  if(date) parts.push(`Date Received: ${date}`);
+  if(assignee) parts.push(`Assigned To: ${assignee}`);
+  if(parts.length===0) return '';
+  return `Analyst pre-tagged metadata (use these values, do not override from document):\n${parts.join('\n')}\n\n`;
+}
+
+function applyMetadata(obj){
+  const name = document.getElementById('meta-name').value.trim();
+  const type = document.getElementById('meta-type').value;
+  const status = document.getElementById('meta-status').value;
+  const broker = document.getElementById('meta-broker').value.trim();
+  const assignee = document.getElementById('meta-assignee').value.trim();
+  if(name && !obj.deal_name) obj.deal_name = name;
+  if(type && obj.property) obj.property.type = obj.property.type||type;
+  if(status && obj.transaction) obj.transaction.status = status;
+  if(broker && obj.transaction) obj.transaction.sourcing = obj.transaction.sourcing||broker;
+  if(assignee) obj._assignee = assignee;
+  obj._ingested_at = new Date().toISOString();
+  obj._source_files = srcFiles.map(f=>f.file.name);
+}
+
+function validateSchema(obj){
+  const issues = [];
+  if(!obj.deal_name) issues.push('deal_name missing');
+  if(!obj.address && !obj.city) issues.push('address/location missing');
+  if(!obj.sources_uses?.purchase_price) issues.push('purchase price not found');
+  if(!obj.cash_flows?.noi?.length) issues.push('NOI cash flows not extracted');
+  if(!obj.top_tenants?.length) issues.push('tenant data not found');
+  return issues;
+}
+
+function countPopulated(obj, depth=0){
+  if(depth > 4) return 0;
+  let count = 0;
+  for(const v of Object.values(obj)){
+    if(v===null||v===''||v==='—') continue;
+    if(Array.isArray(v)){ if(v.length>0) count++; continue; }
+    if(typeof v==='object'){ count+=countPopulated(v,depth+1); continue; }
+    count++;
+  }
+  return count;
+}
+
+async function writeToSupabase(data){
+  const url = getSbUrl().replace(/\/+$/,''); // strip trailing slashes
+  const key = getSbKey();
+
+  // Strip fields that inflate payload size before storing in scalar columns.
+  // The full raw_data JSONB still gets the complete object — we just want
+  // to make sure the top-level row payload stays well under Supabase limits.
+  const rawClean = JSON.parse(JSON.stringify(data));
+  // Remove the reader narrative if it was accidentally attached
+  delete rawClean._reader_narrative;
+
+  // Check payload size — warn if approaching limit
+  const payloadSize = JSON.stringify(rawClean).length;
+  if(payloadSize > 900000){
+    // Trim the largest arrays to avoid hitting Supabase's body limit
+    if(rawClean.lease_abstracts?.length > 20) rawClean.lease_abstracts = rawClean.lease_abstracts.slice(0,20);
+    if(rawClean.cash_flows?.gross_potential_rent?.length > 10){
+      // Truncate each CF array to 10 years max
+      const cfKeys = Object.keys(rawClean.cash_flows);
+      cfKeys.forEach(k=>{ if(Array.isArray(rawClean.cash_flows[k])) rawClean.cash_flows[k]=rawClean.cash_flows[k].slice(0,10); });
+    }
+  }
+
+  const row = {
+    deal_name:      data.deal_name||null,
+    address:        [data.address,data.city,data.state].filter(Boolean).join(', ')||null,
+    asset_type:     data.property?.type||null,
+    purchase_price: parseFloat(String(data.sources_uses?.purchase_price||'').replace(/[$,M]/g,''))*( String(data.sources_uses?.purchase_price||'').includes('M')?1e6:1)||null,
+    going_in_cap:   parseFloat(String(data.returns?.going_in_cap||'').replace(/%/g,''))||null,
+    irr_levered_5:  parseFloat(String(data.returns?.irr_levered_5||'').replace(/%/g,''))||null,
+    moic_5:         parseFloat(String(data.returns?.moic_5||'').replace(/x/gi,''))||null,
+    status:         data.transaction?.status||'Screening',
+    source_broker:  data.transaction?.sourcing||null,
+    assignee:       data._assignee||null,
+    ingested_at:    data._ingested_at||new Date().toISOString(),
+    source_files:   data._source_files||[],
+    schema_version: data.schema_version||'2.0',
+    raw_data:       rawClean,
+  };
+
+  let resp;
+  try{
+    resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}`, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Prefer':'return=representation',
+        'X-Client-Info': 'lsg-ingest/1.0'
+      },
+      body: JSON.stringify(row)
+    });
+  } catch(networkErr){
+    // NetworkError = request never completed — diagnose the cause
+    const payloadKB = Math.round(JSON.stringify(row).length/1024);
+    throw new Error(
+      `Network request failed (payload: ${payloadKB}KB). ` +
+      `Check: (1) Supabase URL format — must be https://xxx.supabase.co with no trailing slash, ` +
+      `(2) RLS is disabled on the '${DEALS_TABLE}' table, ` +
+      `(3) You are using the anon public key (not the service role key).`
+    );
+  }
+
+  if(!resp.ok){
+    let errMsg = `Supabase error ${resp.status}`;
+    try{
+      const err = await resp.json();
+      errMsg = err?.message || err?.error || errMsg;
+      // Common error translations
+      if(resp.status===401) errMsg = 'Invalid API key — check your Supabase anon key';
+      if(resp.status===403) errMsg = 'Permission denied — disable RLS on the deals table or add an insert policy';
+      if(resp.status===404) errMsg = `Table '${DEALS_TABLE}' not found — run the CREATE TABLE SQL in Supabase`;
+      if(resp.status===409) errMsg = 'Duplicate record — deal may already exist';
+      if(errMsg.includes('column') && errMsg.includes('does not exist')) errMsg += ' — your table schema may be outdated, re-run the CREATE TABLE SQL';
+    }catch{}
+    throw new Error(errMsg);
+  }
+
+  const saved = await resp.json();
+  return saved[0]?.id || 'saved';
+}
+
+function showResultSummary(d){
+  const populated = countPopulated(d);
+  const nulls = (d.extraction_meta?.fields_null)||0;
+  const conflicts = (d.conflict_flags||[]).filter(c=>c.field).length;
+  const confidence = d.extraction_meta?.confidence||'medium';
+  const confColor = confidence==='high'?'green':confidence==='low'?'amber':'';
+
+  document.getElementById('result-grid').innerHTML = `
+    <div class="result-stat"><div class="result-stat-label">Fields Populated</div><div class="result-stat-val green">${populated}</div></div>
+    <div class="result-stat"><div class="result-stat-label">Conflicts Found</div><div class="result-stat-val ${conflicts>0?'amber':''}">${conflicts}</div></div>
+    <div class="result-stat"><div class="result-stat-label">Confidence</div><div class="result-stat-val ${confColor}">${confidence.toUpperCase()}</div></div>
+    <div class="result-stat"><div class="result-stat-label">Schema Version</div><div class="result-stat-val">v${d.schema_version||'2.0'}</div></div>`;
+
+  // Syntax-colored JSON preview
+  const preview = JSON.stringify(d, null, 2).split('\n').slice(0, 60).join('\n') + '\n...';
+  document.getElementById('schema-preview').innerHTML = preview
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="val">"$1"</span>')
+    .replace(/: null/g,': <span class="null-val">null</span>');
+}
+
+async function saveToDB(){
+  if(!ingestResult){ alert('No result to save.'); return; }
+  const btn = document.getElementById('save-btn');
+  btn.disabled=true; btn.textContent='Saving...';
+  try{
+    const id = await writeToSupabase(ingestResult);
+    ingestResult._deal_id = id;
+    btn.textContent='✓ Saved';
+    btn.className='btn btn-ghost btn-sm';
+  } catch(e){
+    alert('Save failed: '+e.message);
+    btn.disabled=false; btn.textContent='Save to Pipeline Database';
+  }
+}
+
+function openInOnePager(){
+  if(!ingestResult) return;
+  try{ localStorage.setItem('lsg_op_data_v1', JSON.stringify(ingestResult)); }catch{}
+  window.location.href = 'lsg_one_pager.html';
+}
+
+function resetIngest(){
+  srcFiles=[];
+  ingestResult=null;
+  renderQueue();
+  document.getElementById('pipeline-card').style.display='none';
+  document.getElementById('conflict-section').style.display='none';
+  document.getElementById('result-section').style.display='none';
+  document.getElementById('ingest-status').className='status-bar';
+  ['meta-name','meta-broker','meta-assignee'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('meta-type').value='';
+  document.getElementById('meta-status').value='Screening';
+  document.getElementById('ingest-btn').disabled=false;
+  updateIngestBtn();
+}
+
+function finishPipeline(){
+  clearInterval(elapsedTimer);
+  document.getElementById('ingest-btn').disabled=false;
+}
+
+function setProgress(p){
+  const bar=document.getElementById('ingest-progress');
+  bar.className='progress show';
+  document.getElementById('ingest-fill').style.width=p+'%';
+  if(p>=100) setTimeout(()=>bar.className='progress',800);
+}
+
+function showStatus(type, msg){
+  const el = document.getElementById('ingest-status');
+  el.className='status-bar show '+type;
+  el.innerHTML=(type==='loading'?'<div class="spin"></div>':'')+`<span>${esc(msg)}</span>`;
+}
+
+// ── PIPELINE TAB ─────────────────────────────────────────────────────────────
+async function loadDeals(){
+  const url = getSbUrl();
+  const key = getSbKey();
+  if(!url.startsWith('https://')||key.length<=20){
+    document.getElementById('deals-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔑</div><div class="empty-state-text">Enter Supabase credentials to load pipeline</div></div>`;
+    return;
+  }
+  document.getElementById('deals-container').innerHTML=`<div class="empty-state"><div class="spin"></div></div>`;
+  try{
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?select=id,deal_name,address,asset_type,purchase_price,going_in_cap,irr_levered_5,moic_5,status,source_broker,assignee,ingested_at,raw_data&order=ingested_at.desc&limit=100`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`}
+    });
+    if(!resp.ok){
+      const e = await resp.json().catch(()=>({}));
+      throw new Error(e?.message||`Error ${resp.status}`);
+    }
+    allDeals = await resp.json();
+    document.getElementById('deal-count-inline').textContent = `${allDeals.length} deal${allDeals.length!==1?'s':''}`;
+    populateMarketFilter(allDeals);
+    renderDeals(allDeals);
+  } catch(e){
+    document.getElementById('deals-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">⚠</div><div class="empty-state-text" style="color:var(--red)">${esc(e.message)}</div><div style="font-size:10px;color:var(--dim);margin-top:6px;">Ensure the '${DEALS_TABLE}' table exists in Supabase — see setup guide</div></div>`;
+  }
+}
+
+function renderDeals(deals){
+  const container = document.getElementById('deals-container');
+  if(!deals.length){
+    container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No deals ingested yet</div></div>`;
+    return;
+  }
+
+  const dash = v => (v==null||v===''||v==='—') ? '<span class="dash-cell">—</span>' : v;
+  const fmtM  = v => { if(v==null) return '<span class="dash-cell">—</span>'; const n=parseFloat(v); return isNaN(n)?'<span class="dash-cell">—</span>':'$'+(n/1e6).toFixed(1)+'M'; };
+  const fmtPct= v => { if(v==null||v==='') return '<span class="dash-cell">—</span>'; const s=String(v).trim(); if(s.endsWith('%')) return s; const n=parseFloat(s); return isNaN(n)?'<span class="dash-cell">—</span>':n.toFixed(1)+'%'; };
+  const fmtSF = v => { if(v==null||v==='') return '<span class="dash-cell">—</span>'; const s=String(v).replace(/[^0-9.]/g,''); const n=parseFloat(s); return isNaN(n)?String(v):n.toLocaleString('en-US'); };
+  const fmtAcre = v => { if(v==null||v==='') return '<span class="dash-cell">—</span>'; const n=parseFloat(String(v)); return isNaN(n)?String(v):n.toFixed(1); };
+  const fmtNOI = v => { if(v==null||v==='') return '<span class="dash-cell">—</span>'; const n=parseFloat(String(v).replace(/[$,]/g,'')); if(isNaN(n)) return String(v); return '$'+(n>=1e6?(n/1e6).toFixed(1)+'M':Math.round(n/1000)+'k'); };
+
+  const statusTag = s => {
+    const cls = s==='Active'?'tag-active':s==='Screening'?'tag-screening':s==='Pass'?'tag-pass':s==='Dead'?'tag-dead':'tag-type';
+    return `<span class="tag ${cls}">${esc(s||'—')}</span>`;
+  };
+
+  const screenCell = d => {
+    if(d.screen?.verdict){
+      const v = d.screen.verdict;
+      return `<span class="verdict-badge verdict-${v}" onclick="openDeal('${d.id}')" title="View screen result">${v}</span><button class="rerun-btn" onclick="event.stopPropagation();openDealAndScreen('${d.id}')" title="Re-run screen">↻</button>`;
+    }
+    return `<button class="screen-btn" onclick="event.stopPropagation();openDealAndScreen('${d.id}')">⚡ Screen</button>`;
+  };
+
+  const rows = deals.map(d => {
+    const r = d.raw_data || {};
+    const p = r.property || {};
+    const ret = r.returns || {};
+    const su = r.sources_uses || {};
+    const mkt = r.market || {};
+    const cf = r.cash_flows || {};
+
+    const market = mkt.submarket || [r.city, r.state].filter(Boolean).join(', ') || null;
+    const sfRaw = p.size_sf || null;
+    const sfNum = sfRaw ? sfRaw.replace(/[^0-9,]/g,'').split(',').join('') : null;
+    let acreage = p.acreage || null;
+    if(!acreage && sfRaw && sfRaw.includes('Acres')){ const m = sfRaw.match(/([\d.]+)\s*Acres/i); if(m) acreage = m[1]; }
+    const vintage = p.vintage || null;
+    const noi1 = cf.noi && cf.noi[0] != null ? cf.noi[0] : null;
+    const askPrice = su.purchase_price || d.purchase_price || null;
+    const cap = ret.going_in_cap || d.going_in_cap || null;
+
+    return `<tr style="cursor:pointer;" onclick="openDeal('${d.id}')">
+      <td class="wrap-cell"><div class="deal-name-cell">${esc(d.deal_name||'Unnamed')}</div><div class="deal-addr-cell">${esc(d.address||'')}</div></td>
+      <td>${dash(market?esc(market):null)}</td>
+      <td class="num-cell">${sfNum?fmtSF(sfNum):'<span class="dash-cell">—</span>'}</td>
+      <td class="num-cell">${acreage?fmtAcre(acreage):'<span class="dash-cell">—</span>'}</td>
+      <td class="num-cell">${fmtPct(p.occupancy)}</td>
+      <td class="num-cell">${dash(p.walt?esc(String(p.walt)):null)}</td>
+      <td>${dash(vintage?esc(vintage):null)}</td>
+      <td class="num-cell">${fmtM(askPrice)}</td>
+      <td class="num-cell">${fmtNOI(noi1)}</td>
+      <td class="num-cell">${fmtPct(cap)}</td>
+      <td>${statusTag(d.status)}</td>
+      <td style="font-size:10px;color:var(--dim);">${d.ingested_at?new Date(d.ingested_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):''}</td>
+      <td onclick="event.stopPropagation();">${screenCell(d)}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML=`<div class="pipeline-scroll"><table class="deals-table">
+    <thead><tr>
+      <th class="wrap-cell">Property / Deal</th>
+      <th>Market</th>
+      <th class="num-cell">SF</th>
+      <th class="num-cell">Acreage</th>
+      <th class="num-cell">Occupancy</th>
+      <th class="num-cell">WALT</th>
+      <th>Year Built / Reno</th>
+      <th class="num-cell">Asking Price</th>
+      <th class="num-cell">NOI (Y1)</th>
+      <th class="num-cell">Cap Rate</th>
+      <th>Stage</th>
+      <th>Ingested</th>
+      <th>Screen</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function filterDeals(){
+  const q      = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const type   = document.getElementById('filter-type')?.value||'';
+  const status = document.getElementById('filter-status')?.value||'';
+  const market = document.getElementById('filter-market')?.value||'';
+
+  const filtered = allDeals.filter(d=>{
+    const r = d.raw_data || {};
+    const mkt = r.market || {};
+    const dealMarket = mkt.submarket || [r.city,r.state].filter(Boolean).join(', ') || '';
+    const txt = `${d.deal_name||''} ${d.address||''} ${d.source_broker||''} ${dealMarket}`.toLowerCase();
+    if(q && !txt.includes(q)) return false;
+    if(type && d.asset_type!==type) return false;
+    if(status && d.status!==status) return false;
+    if(market && dealMarket!==market) return false;
+    return true;
+  });
+
+  document.getElementById('deal-count-inline').textContent = `${filtered.length} of ${allDeals.length} deal${allDeals.length!==1?'s':''}`;
+  renderDeals(filtered);
+}
+
+function populateMarketFilter(deals){
+  const markets = [...new Set(deals.map(d=>{
+    const r = d.raw_data||{};
+    return r.market?.submarket || [r.city,r.state].filter(Boolean).join(', ') || '';
+  }).filter(Boolean))].sort();
+  const sel = document.getElementById('filter-market');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">All Markets</option>' + markets.map(m=>`<option>${esc(m)}</option>`).join('');
+}
+
+// ── DEAL DETAIL MODAL ────────────────────────────────────────────────────────
+
+let currentDealId = null;
+
+async function openDeal(id){
+  currentDealId = id;
+  const url = getSbUrl(); const key = getSbKey();
+  try{
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${id}&select=*`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
+    const rows = await resp.json();
+    const deal = rows[0];
+    if(!deal) return;
+
+    // Update allDeals cache with latest from DB (screen result may have been saved)
+    const idx = allDeals.findIndex(d=>String(d.id)===String(id));
+    if(idx>=0) allDeals[idx] = deal;
+
+    const r = deal.raw_data || {};
+    const p = r.property || {};
+    const ret = r.returns || {};
+    const su = r.sources_uses || {};
+    const cs = r.capital_sources || {};
+    const cf = r.cash_flows || {};
+    const mkt = r.market || {};
+    const sc = r.scorecard || {};
+    const it = r.investment_thesis || {};
+
+    document.getElementById('modal-deal-name').textContent = deal.deal_name||'Deal';
+    document.getElementById('modal-deal-sub').textContent = [deal.address, deal.asset_type].filter(Boolean).join(' · ');
+
+    // Set footer button
+    document.getElementById('modal-op-btn').onclick = ()=>loadInOnePager(id);
+
+    const fmtM = v => { if(v==null||v==='') return '—'; const n=parseFloat(String(v).replace(/[$,M]/g,'')); if(isNaN(n)) return String(v); if(String(v).includes('M')||n>=1e6) return '$'+(n>=1e6?n/1e6:n).toFixed(1)+'M'; return '$'+n.toLocaleString(); };
+    const fmtP = v => { if(v==null||v==='') return '—'; const s=String(v).trim(); if(s.endsWith('%')) return s; const n=parseFloat(s); return isNaN(n)?s:n.toFixed(1)+'%'; };
+    const kv = (label,val) => val&&val!=='—'?`<div class="dp-item"><div class="dp-item-label">${label}</div><div class="dp-item-value">${val}</div></div>`:'';
+
+    // Key metrics bar
+    const metricsBar = `
+      <div class="result-grid" style="margin-bottom:16px;">
+        <div class="result-stat"><div class="result-stat-label">Asking Price</div><div class="result-stat-val">${fmtM(su.purchase_price||deal.purchase_price)}</div></div>
+        <div class="result-stat"><div class="result-stat-label">Going-In Cap</div><div class="result-stat-val ${deal.going_in_cap>=8.5?'green':deal.going_in_cap?'':''}">
+          ${fmtP(ret.going_in_cap||deal.going_in_cap)}</div></div>
+        <div class="result-stat"><div class="result-stat-label">IRR (5Y Lev.)</div><div class="result-stat-val green">${fmtP(ret.irr_levered_5||deal.irr_levered_5)}</div></div>
+        <div class="result-stat"><div class="result-stat-label">MOIC (5Y)</div><div class="result-stat-val">${ret.moic_5?parseFloat(ret.moic_5).toFixed(2)+'x':'—'}</div></div>
+      </div>`;
+
+    // Property + deal info
+    const infoSection = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        ${kv('NOI (Y1)', cf.noi?.[0]!=null?fmtM(cf.noi[0]):null)}
+        ${kv('Occupancy', fmtP(p.occupancy))}
+        ${kv('WALT', p.walt?p.walt+' yrs':null)}
+        ${kv('Total SF', p.size_sf)}
+        ${kv('Vintage', p.vintage)}
+        ${kv('Effective Rate', fmtP(cs.effective_rate))}
+        ${kv('DSCR', cs.dscr?parseFloat(cs.dscr).toFixed(2)+'x':null)}
+        ${kv('Debt Yield', fmtP(cs.debt_yield))}
+        ${kv('Broker', deal.source_broker)}
+        ${kv('Stage', deal.status)}
+      </div>`;
+
+    // Thesis / description
+    const thesis = it.broker_headline || sc.description;
+    const thesisSection = thesis ? `
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Investment Thesis</div>
+      <div style="font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:16px;line-height:1.6;">${esc(thesis)}</div>` : '';
+
+    // Disclosed risks tags
+    const risks = it.disclosed_risks||[];
+    const riskTags = risks.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">${risks.map(r=>`<span class="tag" style="background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border);">${esc(r)}</span>`).join('')}</div>` : '';
+
+    // Screener section
+    const screenSection = renderScreenerSection(deal);
+
+    document.getElementById('modal-body').innerHTML = metricsBar + infoSection + thesisSection + riskTags + screenSection;
+
+    // If screen result exists, render it immediately
+    if(deal.screen){
+      const el = document.getElementById('screen-result-block');
+      if(el){ el.innerHTML = renderScreenResult(deal.screen); el.style.display='block'; }
+    }
+
+    document.getElementById('deal-modal').classList.add('open');
+  } catch(e){ alert('Error loading deal: '+e.message); }
+}
+
+function renderScreenerSection(deal){
+  const h = getHurdles();
+  const had = !!deal.screen;
+  const r = deal.raw_data||{};
+  const su = r.sources_uses||{};
+  const ret = r.returns||{};
+  const cap = ret.going_in_cap||deal.going_in_cap||'';
+  const price = su.purchase_price||deal.purchase_price||'';
+
+  return `
+    <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:4px;">
+      <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">⚡ AI Screener — LSG Hurdles</div>
+        <div style="font-size:10px;color:var(--dim);">Cap ≥${h.cap}% · IRR ≥${h.irr}% · CoC ≥${h.coc}% · DY ≥${h.dy}%</div>
+      </div>
+      <div style="padding:14px;">
+        <div class="override-grid">
+          <div class="ov-field">
+            <label>Price Override ($M)</label>
+            <input class="ov-input" id="ov-price" type="number" step="0.5" min="0" placeholder="${price?parseFloat(String(price).replace(/[$,M]/g,'')):'e.g. 65.0'}">
+            <div class="ov-hint">Leave blank to use extracted price</div>
+          </div>
+          <div class="ov-field">
+            <label>Cap Override (%)</label>
+            <input class="ov-input" id="ov-cap" type="number" step="0.25" min="0" placeholder="${cap?parseFloat(cap):'e.g. 8.5'}">
+            <div class="ov-hint">Leave blank to derive from NOI/price</div>
+          </div>
+          <div class="ov-field">
+            <label>Context / Notes</label>
+            <input class="ov-input" id="ov-ctx" type="text" placeholder="e.g. 7yr hold, ex-TIF">
+            <div class="ov-hint">Optional — passed to AI</div>
+          </div>
+        </div>
+        <div class="screen-progress" id="screen-progress">
+          <div class="screen-progress-fill" id="screen-progress-fill"></div>
+        </div>
+        <div class="screen-progress-text" id="screen-progress-text" style="display:none;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-primary" id="run-screen-btn" onclick="runScreen('${deal.id}')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            ${had?'Re-run Screen':'Run Screen'}
+          </button>
+          ${had?`<button class="btn btn-ghost btn-sm" onclick="clearScreen('${deal.id}')">Clear Result</button>`:''}
+          <span style="font-size:10px;color:var(--dim);margin-left:auto;">${had&&deal.screen.ran_at?'Last run: '+deal.screen.ran_at:''}</span>
+        </div>
+        <div id="screen-result-block" style="display:none;margin-top:14px;"></div>
+      </div>
+    </div>`;
+}
+
+function renderScreenResult(s){
+  if(!s) return '';
+  const metricsHtml = (s.metrics||[]).map(m=>`
+    <div class="screen-metric-card ${m.status||'neutral'}">
+      <div class="screen-metric-label">${esc(m.name)}</div>
+      <div class="screen-metric-val">${esc(m.value||'—')}</div>
+      <div class="screen-metric-hurdle">${esc(m.hurdle||'')}</div>
+    </div>`).join('');
+
+  const risksHtml = (s.risk_flags||[]).map(f=>`
+    <div class="screen-risk-item ${f.severity||'low'}">
+      <span class="screen-risk-sev">${esc(f.severity||'low')}</span>${esc(f.flag)}
+    </div>`).join('');
+
+  const stepsHtml = (s.next_steps||[]).map(st=>`<li class="screen-step">${esc(st)}</li>`).join('');
+
+  const pricingRow = s.test_price ? `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;">
+      <div class="result-stat"><div class="result-stat-label">Test Price</div><div class="result-stat-val" style="font-size:14px;">$${(s.test_price/1e6).toFixed(1)}M</div></div>
+      <div class="result-stat"><div class="result-stat-label">Going-In Cap</div><div class="result-stat-val" style="font-size:14px;">${s.going_in_cap?s.going_in_cap.toFixed(2)+'%':'—'}</div></div>
+      <div class="result-stat"><div class="result-stat-label">Equity Check</div><div class="result-stat-val" style="font-size:14px;">${s.equity_check?'$'+s.equity_check.toFixed(1)+'M':'—'}</div></div>
+      <div class="result-stat"><div class="result-stat-label">Annual DS</div><div class="result-stat-val" style="font-size:14px;">${s.debt_service?'$'+Math.round(s.debt_service/1000)+'k':'—'}</div></div>
+    </div>` : '';
+
+  return `
+    <div class="verdict-banner ${s.verdict}">
+      <div class="verdict-word">${s.verdict}</div>
+      <div class="verdict-rationale">${esc(s.verdict_rationale||'')}</div>
+    </div>
+    <div class="screen-metrics">${metricsHtml}</div>
+    ${pricingRow}
+    ${s.go_no_go?`<div class="screen-sub" style="border-left:3px solid var(--accent);margin-bottom:8px;"><div class="screen-sub-label" style="color:var(--accent);">Go / No-Go Variable</div>${esc(s.go_no_go)}</div>`:''}
+    ${s.investment_thesis?`<div class="screen-sub"><div class="screen-sub-label">Investment Thesis</div>${esc(s.investment_thesis)}</div>`:''}
+    ${s.basis_sensitivity?`<div class="screen-sub"><div class="screen-sub-label">Basis Sensitivity</div>${esc(s.basis_sensitivity)}</div>`:''}
+    ${s.tif_note?`<div class="screen-sub"><div class="screen-sub-label">TIF Analysis</div>${esc(s.tif_note)}</div>`:''}
+    ${risksHtml?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Risk Flags</div><div class="screen-risk-list">${risksHtml}</div>`:''}
+    ${stepsHtml?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 0 6px;">Next Steps</div><ul class="screen-steps">${stepsHtml}</ul>`:''}
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="copyScreenBrief()">Copy Brief</button>`;
+}
+
+// ── RUN SCREEN ────────────────────────────────────────────────────────────────
+
+const SCREEN_SYSTEM = `You are a senior acquisitions analyst at Lightstone Group. Screen this retail CRE deal against the provided investment hurdles with institutional rigor. Respond ONLY with valid JSON — no preamble, no markdown fences.
+
+Use 25-year amortization for debt service calculations unless IO period is specified. Flag TIF as non-operating income — show returns WITH and WITHOUT it. Identify the single go/no-go variable that determines whether this deal advances.
+
+Return this exact structure:
+{
+  "verdict": "PASS|WATCH|FAIL",
+  "verdict_rationale": "3-4 sentence institutional verdict",
+  "investment_thesis": "4-6 sentence thesis from LSG perspective",
+  "test_price": number (dollars) or null,
+  "test_price_note": "source of price used",
+  "going_in_cap": number (%) or null,
+  "equity_check": number ($M) or null,
+  "debt_service": number ($/yr) or null,
+  "metrics": [
+    {"name":"Cap Rate","value":"X.XX%","hurdle":"≥ X.X%","status":"pass|watch|fail|neutral"},
+    {"name":"IRR (Est.)","value":"X.X%","hurdle":"≥ X.X%","status":"pass|watch|fail|neutral"},
+    {"name":"CoC Yr 1","value":"X.X%","hurdle":"≥ X.X%","status":"pass|watch|fail|neutral"},
+    {"name":"Debt Yield","value":"X.X%","hurdle":"≥ X.X%","status":"pass|watch|fail|neutral"},
+    {"name":"DSCR","value":"X.XXx","hurdle":"≥ X.XX","status":"pass|watch|fail|neutral"},
+    {"name":"Price/SF","value":"$XXX","hurdle":"Context","status":"neutral"}
+  ],
+  "go_no_go": "Single sentence identifying the one factor that determines whether this deal advances",
+  "tif_note": "Returns with vs without TIF, or null if no TIF",
+  "basis_sensitivity": "At what price does the deal hit all hurdles? Max entry price?",
+  "risk_flags": [{"severity":"high|medium|low","flag":"description"}],
+  "next_steps": ["step1","step2","step3","step4"],
+  "data_quality": "high|medium|low",
+  "data_note": "notes on missing or uncertain data"
+}`;
+
+async function runScreen(dealId){
+  if(!getAntKey().startsWith('sk-')){ alert('Anthropic API key required.'); return; }
+
+  const deal = allDeals.find(d=>String(d.id)===String(dealId));
+  if(!deal){ alert('Deal not found — refresh pipeline.'); return; }
+
+  const h = getHurdles();
+  const r = deal.raw_data || {};
+  const p = r.property || {};
+  const ret = r.returns || {};
+  const su = r.sources_uses || {};
+  const cs = r.capital_sources || {};
+  const cf = r.cash_flows || {};
+  const mkt = r.market || {};
+  const tenants = r.top_tenants || [];
+  const it = r.investment_thesis || {};
+
+  // Read overrides
+  const ovPrice = document.getElementById('ov-price')?.value;
+  const ovCap   = document.getElementById('ov-cap')?.value;
+  const ovCtx   = document.getElementById('ov-ctx')?.value?.trim()||'';
+
+  // UI feedback
+  const btn = document.getElementById('run-screen-btn');
+  const prog = document.getElementById('screen-progress');
+  const progFill = document.getElementById('screen-progress-fill');
+  const progText = document.getElementById('screen-progress-text');
+  if(btn) btn.disabled = true;
+  if(prog){ prog.classList.add('show'); }
+  if(progFill) progFill.style.width='15%';
+  if(progText){ progText.style.display='block'; progText.textContent='Building deal package...'; }
+
+  // Format helpers for prompt
+  const fM = v => { if(v==null) return '—'; const n=parseFloat(String(v).replace(/[$,M]/g,'')); return isNaN(n)?String(v):'$'+(n>=1e6?(n/1e6).toFixed(1)+'M':n.toLocaleString()); };
+  const fP = v => { if(v==null||v==='') return '—'; const s=String(v); if(s.endsWith('%')) return s; const n=parseFloat(s); return isNaN(n)?s:n.toFixed(2)+'%'; };
+
+  // NOI array
+  const noiArr = (cf.noi||[]).slice(0,5).map((v,i)=>`Y${i+1}: ${fM(v)}`).join(' | ');
+
+  // Tenant summary
+  const tenantSummary = tenants.slice(0,8).map(t=>
+    `  ${t.name||''}|${t.sf||''}SF|${fM(t.in_place_rent)}/SF|Exp:${t.exp_date||''}|${t.credit_watch?'WATCH':'OK'}`
+  ).join('\n');
+
+  // Build prompt
+  const prompt = `DEAL SCREENING PACKAGE — ${deal.deal_name||'Unnamed'}
+${'='.repeat(55)}
+TYPE: ${p.type||deal.asset_type||'—'} | MARKET: ${mkt.submarket||[r.city,r.state].filter(Boolean).join(', ')||'—'}
+GLA: ${p.size_sf||'—'} | OCCUPANCY: ${fP(p.occupancy)} | WALT: ${p.walt||'—'} yrs
+VINTAGE: ${p.vintage||'—'} | BUILDINGS: ${p.buildings||'—'}
+
+HURDLES TO SCREEN AGAINST:
+Cap Rate ≥ ${h.cap}% | IRR ≥ ${h.irr}% | CoC Y1 ≥ ${h.coc}% | Debt Yield ≥ ${h.dy}% | DSCR ≥ ${h.dscr} | Max LTV ${h.ltv}%
+Assumed debt rate (if unknown): ${h.rate}% | Assumed LTV (if unknown): ${h.assumedltv}%
+
+PRICING
+${ovPrice?`OVERRIDE PRICE: $${ovPrice}M`:`Asking: ${fM(su.purchase_price||deal.purchase_price)||'Best Offer / Not disclosed'}`}
+${ovCap?`OVERRIDE CAP: ${ovCap}%`:ret.going_in_cap?`Going-in Cap: ${fP(ret.going_in_cap)}`:'Cap: derive from NOI/price'}
+${ovCtx?`CONTEXT: ${ovCtx}`:''}
+
+FINANCIALS
+NOI: ${noiArr||'—'}
+${cf.cfads?.[0]!=null?`CF After Debt Service Y1: ${fM(cf.cfads[0])}`:''}
+Purchase Price: ${fM(su.purchase_price||deal.purchase_price)} | PSF: ${su.purchase_price_psf?'$'+su.purchase_price_psf:'—'}
+Senior Debt: ${fM(su.senior_debt_initial)} (${fP(su.senior_debt_pct)}) | Equity: ${fM(su.lightstone_initial)}
+
+DEBT TERMS
+${cs.fixed_floating||'—'} | Rate: ${fP(cs.effective_rate)} | Term: ${cs.term_years||'—'}y | IO: ${cs.io_period_years||'—'}y
+LTC: ${fP(cs.ltc)} | LTV: ${fP(cs.ltv)} | Debt Yield: ${fP(cs.debt_yield)} | DSCR: ${cs.dscr||'—'}
+
+RETURNS (FROM OM/MODEL)
+IRR Levered 5Y: ${fP(ret.irr_levered_5)} | 10Y: ${fP(ret.irr_levered_10)}
+MOIC 5Y: ${ret.moic_5||'—'} | CoC: ${ret.coc_pre_refi_5||'—'}
+Going-in YoC: ${fP(ret.going_in_yield_cost)}
+
+KEY TENANTS
+${tenantSummary||'Not extracted'}
+
+INVESTMENT THESIS (BROKER)
+${it.broker_headline||r.scorecard?.description||'Not extracted'}
+Disclosed risks: ${(it.disclosed_risks||[]).join('; ')||'None listed'}
+
+MARKET
+Submarket: ${mkt.submarket||'—'} | Vacancy: ${fP(mkt.vacancy_total)} | Rent Growth T10: ${fP(mkt.avg_rent_growth_10yr)}
+
+Screen this deal against the hurdles above. If price or debt terms are missing, estimate using the assumed rate and LTV provided.`;
+
+  if(progFill) progFill.style.width='40%';
+  if(progText) progText.textContent='Screening against LSG hurdles...';
+
+  let result;
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':getAntKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:3000,
+        system:SCREEN_SYSTEM,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!resp.ok) throw new Error((await resp.json()).error?.message||`API error ${resp.status}`);
+    const data = await resp.json();
+    const raw = data.content?.find(b=>b.type==='text')?.text||'';
+    result = JSON.parse(raw.replace(/```json|```/g,'').trim());
+  } catch(e){
+    if(btn) btn.disabled=false;
+    if(prog) prog.classList.remove('show');
+    if(progText) progText.style.display='none';
+    alert('Screen failed: '+e.message);
+    return;
+  }
+
+  result.ran_at = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  if(progFill) progFill.style.width='80%';
+  if(progText) progText.textContent='Saving to database...';
+
+  // PATCH screen result to Supabase
+  try{
+    const sbUrl = getSbUrl(); const sbKey = getSbKey();
+    await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${dealId}`,{
+      method:'PATCH',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':sbKey,
+        'Authorization':`Bearer ${sbKey}`,
+        'Prefer':'return=minimal'
+      },
+      body:JSON.stringify({screen:result})
+    });
+  } catch(e){
+    console.warn('Screen save failed:', e.message);
+    // Still show result even if save failed
+  }
+
+  // Update local cache
+  const idx = allDeals.findIndex(d=>String(d.id)===String(dealId));
+  if(idx>=0) allDeals[idx].screen = result;
+
+  if(progFill) progFill.style.width='100%';
+  setTimeout(()=>{
+    if(prog) prog.classList.remove('show');
+    if(progText) progText.style.display='none';
+    if(btn){ btn.disabled=false; btn.textContent='Re-run Screen'; }
+    const el = document.getElementById('screen-result-block');
+    if(el){ el.innerHTML=renderScreenResult(result); el.style.display='block'; }
+    // Refresh pipeline table to show verdict badge
+    renderDeals(allDeals.filter(d=>{
+      const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+      const type=document.getElementById('filter-type')?.value||'';
+      const status=document.getElementById('filter-status')?.value||'';
+      const market=document.getElementById('filter-market')?.value||'';
+      const r2=d.raw_data||{};
+      const mkt2=r2.market||{};
+      const dm=mkt2.submarket||[r2.city,r2.state].filter(Boolean).join(', ')||'';
+      const txt=`${d.deal_name||''} ${d.address||''} ${d.source_broker||''} ${dm}`.toLowerCase();
+      if(q&&!txt.includes(q)) return false;
+      if(type&&d.asset_type!==type) return false;
+      if(status&&d.status!==status) return false;
+      if(market&&dm!==market) return false;
+      return true;
+    }));
+  }, 500);
+}
+
+function openDealAndScreen(id){
+  openDeal(id).then(()=>{
+    // Scroll to screener after modal opens
+    setTimeout(()=>{
+      const btn = document.getElementById('run-screen-btn');
+      if(btn) btn.scrollIntoView({behavior:'smooth',block:'center'});
+    }, 300);
+  });
+}
+
+async function clearScreen(dealId){
+  // Clear from Supabase
+  try{
+    const sbUrl=getSbUrl(); const sbKey=getSbKey();
+    await fetch(`${sbUrl}/rest/v1/${DEALS_TABLE}?id=eq.${dealId}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','apikey':sbKey,'Authorization':`Bearer ${sbKey}`,'Prefer':'return=minimal'},
+      body:JSON.stringify({screen:null})
+    });
+  }catch(e){ console.warn('Clear screen failed:',e); }
+  const idx=allDeals.findIndex(d=>String(d.id)===String(dealId));
+  if(idx>=0) allDeals[idx].screen=null;
+  openDeal(dealId);
+  renderDeals(allDeals);
+}
+
+function copyScreenBrief(){
+  const deal = allDeals.find(d=>String(d.id)===String(currentDealId));
+  if(!deal?.screen) return;
+  const s = deal.screen;
+  const r = deal.raw_data||{};
+  const su = r.sources_uses||{};
+  const lines=[
+    `SCREENING BRIEF — ${deal.deal_name||''}`,
+    `${deal.asset_type||''} · ${deal.address||''}`,
+    `Asking: ${su.purchase_price?'$'+(parseFloat(su.purchase_price)/1e6).toFixed(1)+'M':'—'} | Stage: ${deal.status||'—'}`,
+    ``,`VERDICT: ${s.verdict}  (${s.ran_at||''})`,``,
+    `RATIONALE`,s.verdict_rationale||'',``,
+    s.test_price?`PRICING AT $${(s.test_price/1e6).toFixed(1)}M (${s.test_price_note||''})`:null,
+    s.test_price?`  Cap: ${s.going_in_cap?s.going_in_cap.toFixed(2)+'%':'—'} | Equity: ${s.equity_check?'$'+s.equity_check.toFixed(1)+'M':'—'} | DS: ${s.debt_service?'$'+Math.round(s.debt_service/1000)+'k/yr':'—'}`:null,
+    ``,`GO/NO-GO: ${s.go_no_go||'—'}`,``,
+    `METRICS`,
+    ...(s.metrics||[]).map(m=>`  ${m.name}: ${m.value} | Hurdle: ${m.hurdle} | ${(m.status||'').toUpperCase()}`),
+    ``,`INVESTMENT THESIS`,s.investment_thesis||'',
+    ``,s.basis_sensitivity?`SENSITIVITY: ${s.basis_sensitivity}`:null,
+    s.tif_note?`TIF: ${s.tif_note}`:null,
+    ``,`RISK FLAGS`,
+    ...(s.risk_flags||[]).map(f=>`  [${(f.severity||'').toUpperCase()}] ${f.flag}`),
+    ``,`NEXT STEPS`,
+    ...(s.next_steps||[]).map((st,i)=>`  ${i+1}. ${st}`)
+  ].filter(l=>l!==null&&l!==undefined);
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(()=>{ const btn=document.querySelector('[onclick="copyScreenBrief()"]'); if(btn){btn.textContent='✓ Copied';setTimeout(()=>btn.textContent='Copy Brief',2000);} })
+    .catch(()=>alert('Copy failed — try manually.'));
+}
+
+async function loadInOnePager(id){
+  const url = getSbUrl(); const key = getSbKey();
+  try{
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${id}&select=raw_data`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}});
+    const rows = await resp.json();
+    if(rows[0]?.raw_data){
+      localStorage.setItem('lsg_op_data_v1', JSON.stringify(rows[0].raw_data));
+      window.location.href='lsg_one_pager.html';
+    }
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+function closeModal(){ document.getElementById('deal-modal').classList.remove('open'); currentDealId=null; }
+
+// ── HURDLES ───────────────────────────────────────────────────────────────────
+
+const HURDLES_KEY = 'lsg_hurdles_v1';
+const HURDLE_DEFAULTS = {cap:8.5, irr:15.0, coc:10.0, dy:8.0, dscr:1.25, ltv:75, rate:6.5, assumedltv:65};
+
+function getHurdles(){
+  try{
+    const s=localStorage.getItem(HURDLES_KEY);
+    if(s) return {...HURDLE_DEFAULTS,...JSON.parse(s)};
+  }catch{}
+  return {...HURDLE_DEFAULTS};
+}
+
+function saveHurdles(){
+  const h={
+    cap:  parseFloat(document.getElementById('hurdle-cap')?.value)||HURDLE_DEFAULTS.cap,
+    irr:  parseFloat(document.getElementById('hurdle-irr')?.value)||HURDLE_DEFAULTS.irr,
+    coc:  parseFloat(document.getElementById('hurdle-coc')?.value)||HURDLE_DEFAULTS.coc,
+    dy:   parseFloat(document.getElementById('hurdle-dy')?.value)||HURDLE_DEFAULTS.dy,
+    dscr: parseFloat(document.getElementById('hurdle-dscr')?.value)||HURDLE_DEFAULTS.dscr,
+    ltv:  parseFloat(document.getElementById('hurdle-ltv')?.value)||HURDLE_DEFAULTS.ltv,
+    rate: parseFloat(document.getElementById('hurdle-rate')?.value)||HURDLE_DEFAULTS.rate,
+    assumedltv: parseFloat(document.getElementById('hurdle-assumedltv')?.value)||HURDLE_DEFAULTS.assumedltv,
+  };
+  try{ localStorage.setItem(HURDLES_KEY, JSON.stringify(h)); }catch{}
+  const saved=document.getElementById('hurdles-saved');
+  if(saved){ saved.style.display='inline'; setTimeout(()=>saved.style.display='none',1500); }
+}
+
+function resetHurdles(){
+  try{ localStorage.removeItem(HURDLES_KEY); }catch{}
+  loadHurdlesIntoForm();
+  const saved=document.getElementById('hurdles-saved');
+  if(saved){ saved.textContent='✓ Reset'; saved.style.display='inline'; setTimeout(()=>{ saved.style.display='none'; saved.textContent='✓ Saved'; },1500); }
+}
+
+function loadHurdlesIntoForm(){
+  const h=getHurdles();
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  set('hurdle-cap',h.cap); set('hurdle-irr',h.irr); set('hurdle-coc',h.coc);
+  set('hurdle-dy',h.dy);   set('hurdle-dscr',h.dscr); set('hurdle-ltv',h.ltv);
+  set('hurdle-rate',h.rate); set('hurdle-assumedltv',h.assumedltv);
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function toggleGuide(bodyId, toggleId){
+  const body = document.getElementById(bodyId);
+  const tog  = document.getElementById(toggleId);
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  tog.textContent = open ? '▲ collapse' : '▼ expand';
+
+}
+
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['ingest','pipeline','compare','support'][i]===id));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
+  if(id==='pipeline') loadDeals();
+  if(id==='compare') initCompare();
+}
+
+// ── COMPARE ──────────────────────────────────────────────────────────────────
+
+function initCompare(){
+  // Populate selects from allDeals — if not loaded yet, fetch first
+  if(!allDeals.length){
+    const url = getSbUrl(); const key = getSbKey();
+    if(!url.startsWith('https://')||key.length<=20){
+      document.getElementById('compare-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔑</div><div class="empty-state-text">Connect Supabase credentials to load deals</div></div>`;
+      return;
+    }
+    fetch(`${url}/rest/v1/deals?select=id,deal_name,address,asset_type,purchase_price,going_in_cap,irr_levered_5,moic_5,status,source_broker,assignee,ingested_at,raw_data&order=ingested_at.desc&limit=100`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`}
+    }).then(r=>r.json()).then(data=>{
+      allDeals=data;
+      populateCompareSelects();
+    }).catch(()=>{
+      document.getElementById('compare-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">⚠</div><div class="empty-state-text">Could not load deals — check credentials</div></div>`;
+    });
+  } else {
+    populateCompareSelects();
+  }
+}
+
+function populateCompareSelects(){
+  ['compare-a','compare-b','compare-c'].forEach((id,i)=>{
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    const placeholder = ['— Select Deal A —','— Select Deal B —','— Deal C (optional) —'][i];
+    sel.innerHTML = `<option value="">${placeholder}</option>` +
+      allDeals.map(d=>`<option value="${d.id}">${esc(d.deal_name||'Unnamed')}${d.address?' · '+esc(d.address.split(',').slice(-2).join(',').trim()):''}</option>`).join('');
+    if(cur) sel.value = cur;
+  });
+}
+
+function clearCompare(){
+  ['compare-a','compare-b','compare-c'].forEach((id,i)=>{
+    const sel = document.getElementById(id);
+    const placeholder = ['— Select Deal A —','— Select Deal B —','— Deal C (optional) —'][i];
+    sel.innerHTML = `<option value="">${placeholder}</option>`;
+  });
+  populateCompareSelects();
+  document.getElementById('compare-container').innerHTML=`<div class="empty-state"><div class="empty-state-icon">⚖️</div><div class="empty-state-text">Select at least 2 deals to compare</div></div>`;
+}
+
+function renderCompare(){
+  const ids = ['compare-a','compare-b','compare-c']
+    .map(id=>document.getElementById(id)?.value)
+    .filter(Boolean);
+
+  const container = document.getElementById('compare-container');
+
+  if(ids.length < 2){
+    container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">⚖️</div><div class="empty-state-text">Select at least 2 deals to compare</div></div>`;
+    return;
+  }
+
+  const selected = ids.map(id=>allDeals.find(d=>String(d.id)===id)).filter(Boolean);
+  if(selected.length < 2){ container.innerHTML=`<div class="empty-state"><div class="empty-state-text">Could not find selected deals — refresh pipeline first</div></div>`; return; }
+
+  // Helper extractors from raw_data
+  const rd  = d => d.raw_data || {};
+  const prop = d => rd(d).property || {};
+  const ret  = d => rd(d).returns || {};
+  const su   = d => rd(d).sources_uses || {};
+  const cs   = d => rd(d).capital_sources || {};
+  const mkt  = d => rd(d).market || {};
+  const cf   = d => rd(d).cash_flows || {};
+  const inc  = d => rd(d).income_assumptions || {};
+
+  // Format helpers
+  const dash = v => (v==null||v===''||v==='—') ? null : v;
+  const pctFmt = v => { if(!dash(v)) return null; const s=String(v).trim(); if(s.endsWith('%')) return s; const n=parseFloat(s); return isNaN(n)?s:n.toFixed(1)+'%'; };
+  const mFmt  = v => { if(!dash(v)) return null; const n=parseFloat(String(v).replace(/[$,M]/g,'')); if(isNaN(n)) return String(v); if(String(v).includes('M')||n>=1e6) return '$'+(n>=1e6?n/1e6:n).toFixed(1)+'M'; return '$'+Math.round(n).toLocaleString(); };
+  const numFmt= v => { if(!dash(v)) return null; const n=parseFloat(String(v).replace(/[^0-9.-]/g,'')); return isNaN(n)?String(v):n.toLocaleString(); };
+
+  // Color coding helpers
+  const capColor  = v => { const n=parseFloat(v); if(isNaN(n)) return ''; return n>=8.5?'cv-pass':n>=7?'cv-watch':'cv-fail'; };
+  const irrColor  = v => { const n=parseFloat(v); if(isNaN(n)) return ''; return n>=15?'cv-pass':n>=12?'cv-watch':'cv-fail'; };
+  const cocColor  = v => { const n=parseFloat(v); if(isNaN(n)) return ''; return n>=10?'cv-pass':n>=8?'cv-watch':'cv-fail'; };
+  const moicColor = v => { const n=parseFloat(String(v).replace(/x/i,'')); if(isNaN(n)) return ''; return n>=1.8?'cv-pass':n>=1.5?'cv-watch':'cv-fail'; };
+  const occupColor= v => { const n=parseFloat(v); if(isNaN(n)) return ''; return n>=90?'cv-pass':n>=80?'cv-watch':'cv-fail'; };
+  const waltColor = v => { const n=parseFloat(v); if(isNaN(n)) return ''; return n>=5?'cv-pass':n>=3?'cv-watch':'cv-fail'; };
+  const dscrColor = v => { const n=parseFloat(String(v).replace(/x/i,'')); if(isNaN(n)) return ''; return n>=1.4?'cv-pass':n>=1.2?'cv-watch':'cv-fail'; };
+
+  // Row definitions: {label, getValue(deal), colorFn(rawVal), numericFn(deal) for best/worst, dir: 1=higher better, -1=lower better}
+  const ROWS = [
+    // Property
+    {section:'Property'},
+    {label:'Asset Type',     get: d=>esc(prop(d).type||d.asset_type||null)},
+    {label:'Total SF',       get: d=>numFmt(prop(d).size_sf?.replace(/[^0-9,]/g,'')||null)},
+    {label:'Acreage',        get: d=>{ const a=prop(d).acreage; return a?parseFloat(a).toFixed(1):null; }},
+    {label:'Occupancy',      get: d=>pctFmt(prop(d).occupancy), color: d=>occupColor(prop(d).occupancy),  num: d=>parseFloat(prop(d).occupancy), dir:1},
+    {label:'WALT',           get: d=>prop(d).walt?prop(d).walt+' yrs':null, color: d=>waltColor(prop(d).walt), num: d=>parseFloat(prop(d).walt), dir:1},
+    {label:'Year Built',     get: d=>prop(d).vintage||null},
+    {label:'Buildings',      get: d=>prop(d).buildings||null},
+    // Pricing
+    {section:'Pricing'},
+    {label:'Asking Price',   get: d=>mFmt(su(d).purchase_price||d.purchase_price), num: d=>parseFloat(String(su(d).purchase_price||d.purchase_price||0).replace(/[$,M]/g,'')), dir:-1},
+    {label:'Price PSF',      get: d=>su(d).purchase_price_psf?'$'+su(d).purchase_price_psf:null, num: d=>parseFloat(su(d).purchase_price_psf), dir:-1},
+    {label:'Going-In Cap',   get: d=>pctFmt(ret(d).going_in_cap||d.going_in_cap), color: d=>capColor(ret(d).going_in_cap||d.going_in_cap), num: d=>parseFloat(ret(d).going_in_cap||d.going_in_cap), dir:1},
+    {label:'NOI (Y1)',       get: d=>{ const n=cf(d).noi?.[0]; return n!=null?mFmt(n):null; }, num: d=>cf(d).noi?.[0], dir:1},
+    {label:'NOI (Y3)',       get: d=>{ const n=cf(d).noi?.[2]; return n!=null?mFmt(n):null; }, num: d=>cf(d).noi?.[2], dir:1},
+    // Returns
+    {section:'Returns (5-Year)'},
+    {label:'IRR (Levered)',  get: d=>pctFmt(ret(d).irr_levered_5||d.irr_levered_5), color: d=>irrColor(ret(d).irr_levered_5||d.irr_levered_5), num: d=>parseFloat(ret(d).irr_levered_5||d.irr_levered_5), dir:1},
+    {label:'IRR (Unlevered)',get: d=>pctFmt(ret(d).irr_unlevered_5), num: d=>parseFloat(ret(d).irr_unlevered_5), dir:1},
+    {label:'MOIC',           get: d=>ret(d).moic_5?parseFloat(ret(d).moic_5).toFixed(2)+'x':null, color: d=>moicColor(ret(d).moic_5), num: d=>parseFloat(ret(d).moic_5), dir:1},
+    {label:'Net Profit',     get: d=>mFmt(ret(d).net_profit_5), num: d=>parseFloat(String(ret(d).net_profit_5||0).replace(/[$,M]/g,'')), dir:1},
+    {label:'Avg CoC (5Y)',   get: d=>pctFmt(ret(d).coc_pre_refi_5), color: d=>cocColor(ret(d).coc_pre_refi_5), num: d=>parseFloat(ret(d).coc_pre_refi_5), dir:1},
+    // Debt
+    {section:'Capital Structure'},
+    {label:'Senior Debt',    get: d=>mFmt(su(d).senior_debt_initial)},
+    {label:'Equity',         get: d=>mFmt(su(d).lightstone_initial)},
+    {label:'LTC',            get: d=>pctFmt(cs(d).ltc)},
+    {label:'LTV',            get: d=>pctFmt(cs(d).ltv)},
+    {label:'Effective Rate', get: d=>pctFmt(cs(d).effective_rate), num: d=>parseFloat(cs(d).effective_rate), dir:-1},
+    {label:'IO Period',      get: d=>cs(d).io_period_years?cs(d).io_period_years+'y':null},
+    {label:'Debt Yield',     get: d=>pctFmt(cs(d).debt_yield), num: d=>parseFloat(cs(d).debt_yield), dir:1},
+    {label:'DSCR',           get: d=>cs(d).dscr?parseFloat(cs(d).dscr).toFixed(2)+'x':null, color: d=>dscrColor(cs(d).dscr), num: d=>parseFloat(cs(d).dscr), dir:1},
+    // Market
+    {section:'Market'},
+    {label:'Submarket',      get: d=>esc(mkt(d).submarket||[rd(d).city,rd(d).state].filter(Boolean).join(', ')||null)},
+    {label:'GS Grade',       get: d=>mkt(d).gs_grade||null},
+    {label:'Rent Growth T10',get: d=>pctFmt(mkt(d).avg_rent_growth_10yr)},
+    {label:'Vacancy',        get: d=>pctFmt(mkt(d).vacancy_total)},
+    // Assumptions
+    {section:'Underwriting Assumptions'},
+    {label:'General Vacancy',get: d=>pctFmt(inc(d).general_vacancy)},
+    {label:'Annual Escalations',get: d=>inc(d).annual_escalations||null},
+    {label:'Exit Cap (5Y)',  get: d=>pctFmt(rd(d).valuation?.exit_cap_5yr), num: d=>parseFloat(rd(d).valuation?.exit_cap_5yr), dir:-1},
+    // Deal Info
+    {section:'Deal Info'},
+    {label:'Stage',          get: d=>d.status||null},
+    {label:'Broker',         get: d=>esc(d.source_broker||null)},
+    {label:'Assignee',       get: d=>esc(d.assignee||null)},
+    {label:'Ingested',       get: d=>d.ingested_at?new Date(d.ingested_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):null},
+  ];
+
+  // Build column headers
+  const headerCells = selected.map(d=>{
+    const addr = d.address||'';
+    const shortAddr = addr.split(',').slice(-2).join(',').trim();
+    return `<th><div style="font-size:13px;font-weight:600;">${esc(d.deal_name||'Unnamed')}</div><div style="font-size:10px;font-weight:400;opacity:.7;margin-top:2px;">${esc(shortAddr)}</div></th>`;
+  }).join('');
+
+  // Build rows
+  const bodyRows = ROWS.map(row=>{
+    if(row.section){
+      const emptyCells = selected.map(()=>'<td></td>').join('');
+      return `<tr class="section-row"><td>${row.section}</td>${emptyCells}</tr>`;
+    }
+
+    const vals  = selected.map(d=>row.get(d));
+    const nums  = row.num ? selected.map(d=>{ try{ return row.num(d); }catch(e){ return null; }}) : null;
+
+    // Best/worst detection
+    let bestIdx=-1, worstIdx=-1;
+    if(nums && selected.length > 1){
+      const valid = nums.map((n,i)=>({n,i})).filter(x=>x.n!=null&&!isNaN(x.n));
+      if(valid.length > 1){
+        bestIdx  = valid.reduce((b,x)=>(row.dir>0 ? x.n>valid[b].n : x.n<valid[b].n)?valid.indexOf(x):b, 0);
+        worstIdx = valid.reduce((w,x)=>(row.dir>0 ? x.n<valid[w].n : x.n>valid[w].n)?valid.indexOf(x):w, 0);
+        bestIdx  = valid[bestIdx].i;
+        worstIdx = valid[worstIdx].i;
+        if(bestIdx===worstIdx){ worstIdx=-1; } // all same value
+      }
+    }
+
+    const allNull = vals.every(v=>v==null);
+    if(allNull) return ''; // skip fully empty rows
+
+    const cells = selected.map((d,i)=>{
+      const val = vals[i];
+      if(val==null) return `<td class="cv-dash">—</td>`;
+      const colorClass = row.color ? row.color(d) : '';
+      const bestClass  = (nums && i===bestIdx)  ? 'cv-best'  : '';
+      const worstClass = (nums && i===worstIdx) ? 'cv-worst' : '';
+      const cls = [colorClass||bestClass, worstClass].filter(Boolean).join(' ');
+      return `<td class="${cls}">${val}</td>`;
+    }).join('');
+
+    return `<tr><td>${row.label}</td>${cells}</tr>`;
+  }).filter(Boolean).join('');
+
+  container.innerHTML = `
+    <div class="compare-scroll">
+      <table class="compare-table">
+        <thead><tr><th>Metric</th>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;font-size:10px;color:var(--dim);">
+      <span style="color:var(--green);font-weight:700;">Green</span> = best in set or meets hurdle &nbsp;·&nbsp;
+      <span style="color:var(--red);">Red</span> = worst in set or below hurdle &nbsp;·&nbsp;
+      <span style="color:var(--amber);">Amber</span> = watch
+    </div>`;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  try{
+    const ant=localStorage.getItem(KEYS.ant); if(ant) document.getElementById('anthropic-key').value=ant;
+    const url=localStorage.getItem(KEYS.sbUrl); if(url) document.getElementById('sb-url').value=url;
+    const key=localStorage.getItem(KEYS.sbKey); if(key) document.getElementById('sb-key').value=key;
+    // Default today's date
+    document.getElementById('meta-date').value=new Date().toISOString().split('T')[0];
+  }catch{}
+  checkKeys();
+  loadHurdlesIntoForm();
+});
+</script>
+</body>
+</html>
