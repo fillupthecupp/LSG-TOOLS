@@ -774,6 +774,7 @@ GRANT USAGE ON SCHEMA public TO authenticated;</div>
     <div class="ddm-body" id="modal-body"></div>
     <div class="ddm-footer" id="modal-footer">
       <button class="btn btn-outline" id="modal-op-btn">Open in One Pager →</button>
+      <button class="btn btn-ghost" id="modal-edit-btn" onclick="toggleEditPanel()">✏ Edit Fields</button>
       <button class="btn btn-ghost" onclick="closeModal()">Close</button>
     </div>
   </div>
@@ -2120,6 +2121,155 @@ async function loadInOnePager(id){
       window.open(getToolUrl('lsg_one_pager.html'), '_blank');
     }
   } catch(e){ alert('Error: '+e.message); }
+}
+
+function toggleEditPanel(){
+  const existing = document.getElementById('edit-panel');
+  if(existing){ existing.remove(); document.getElementById('modal-edit-btn').textContent='✏ Edit Fields'; return; }
+
+  const deal = allDeals.find(d=>String(d.id)===String(currentDealId));
+  if(!deal){ alert('Deal not loaded.'); return; }
+
+  const r = deal.raw_data || {};
+  const p = r.property || {};
+  const ret = r.returns || {};
+  const su = r.sources_uses || {};
+  const cf = r.cash_flows || {};
+  const mkt = r.market || {};
+
+  const field = (label, id, val, type='text', opts=null) => {
+    if(opts){
+      const os = opts.map(o=>`<option value="${esc(o)}"${String(val||'')==o?'selected':''}>${esc(o)}</option>`).join('');
+      return `<div class="ov-field"><label>${label}</label><select class="ov-input" id="ef-${id}"><option value="">—</option>${os}</select></div>`;
+    }
+    return `<div class="ov-field"><label>${label}</label><input class="ov-input" id="ef-${id}" type="${type}" value="${esc(String(val||''))}" ${type==='number'?'step="any"':''}></div>`;
+  };
+
+  const panel = document.createElement('div');
+  panel.id = 'edit-panel';
+  panel.style.cssText = 'border-top:1px solid var(--border);margin-top:16px;padding-top:16px;';
+  panel.innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;">Edit Deal Fields</div>
+    <div style="font-size:9px;color:var(--dim);margin-bottom:12px;">Changes are saved directly to Supabase. Leave a field blank to keep its existing value.</div>
+
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px;">Deal Info</div>
+    <div class="override-grid" style="margin-bottom:14px;">
+      ${field('Deal Name', 'deal_name', deal.deal_name)}
+      ${field('Address', 'address', deal.address)}
+      ${field('Asset Type', 'asset_type', deal.asset_type, 'text', ['Outlet Mall','Power Center','Strip Center','Grocery-Anchored','Super-Regional Mall','Lifestyle Center','Mixed-Use Retail','Note / Distressed Debt','Mezz / B-Piece','Other Retail'])}
+      ${field('Stage', 'status', deal.status, 'text', ['Screening','Active','IC','Due Diligence','Pass','Dead'])}
+      ${field('Broker', 'source_broker', deal.source_broker)}
+      ${field('Market / City', 'market_name', mkt.name || deal.market)}
+    </div>
+
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px;">Property Metrics</div>
+    <div class="override-grid" style="margin-bottom:14px;">
+      ${field('Size (SF)', 'size_sf', p.size_sf, 'number')}
+      ${field('Occupancy (%)', 'occupancy', p.occupancy, 'number')}
+      ${field('WALT (yrs)', 'walt', p.walt, 'number')}
+      ${field('Vintage', 'vintage', p.vintage, 'number')}
+      ${field('Y1 NOI ($)', 'noi_y1', cf.noi?.[0] ?? '', 'number')}
+      ${field('Anchor Tenant', 'anchor', p.anchor_tenant)}
+    </div>
+
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px;">Returns & Pricing</div>
+    <div class="override-grid" style="margin-bottom:16px;">
+      ${field('Asking Price ($M)', 'purchase_price', su.purchase_price || deal.purchase_price, 'number')}
+      ${field('Going-In Cap (%)', 'going_in_cap', ret.going_in_cap || deal.going_in_cap, 'number')}
+      ${field('IRR Levered 5Y (%)', 'irr_levered_5', ret.irr_levered_5 || deal.irr_levered_5, 'number')}
+      ${field('MOIC 5Y (x)', 'moic_5', ret.moic_5 || deal.moic_5, 'number')}
+      ${field('CoC Year 1 (%)', 'coc_1', ret.coc_1 || deal.coc_1, 'number')}
+      ${field('Debt Yield (%)', 'debt_yield', (r.capital_sources||{}).debt_yield, 'number')}
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-green" id="save-edits-btn" onclick="saveEdits()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Changes
+      </button>
+      <span id="edit-save-status" style="font-size:11px;color:var(--muted);"></span>
+    </div>`;
+
+  document.getElementById('modal-body').appendChild(panel);
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  document.getElementById('modal-edit-btn').textContent = '✕ Cancel Edit';
+}
+
+async function saveEdits(){
+  if(!currentDealId){ alert('No deal selected.'); return; }
+  const btn = document.getElementById('save-edits-btn');
+  const status = document.getElementById('edit-save-status');
+  btn.disabled = true; status.textContent = 'Saving…';
+
+  const deal = allDeals.find(d=>String(d.id)===String(currentDealId));
+  const r = JSON.parse(JSON.stringify(deal.raw_data || {}));
+  if(!r.property) r.property = {};
+  if(!r.returns) r.returns = {};
+  if(!r.sources_uses) r.sources_uses = {};
+  if(!r.cash_flows) r.cash_flows = {};
+  if(!r.market) r.market = {};
+  if(!r.capital_sources) r.capital_sources = {};
+
+  const g = id => { const el = document.getElementById('ef-'+id); return el ? el.value.trim() : ''; };
+  const gn = id => { const v = g(id); return v === '' ? null : parseFloat(v); };
+
+  // Top-level column patches
+  const topLevel = {};
+  if(g('deal_name'))     topLevel.deal_name    = g('deal_name');
+  if(g('address'))       topLevel.address      = g('address');
+  if(g('asset_type'))    topLevel.asset_type   = g('asset_type');
+  if(g('status'))        topLevel.status       = g('status');
+  if(g('source_broker')) topLevel.source_broker= g('source_broker');
+  if(gn('purchase_price') != null) topLevel.purchase_price = gn('purchase_price');
+  if(gn('going_in_cap')  != null) topLevel.going_in_cap   = gn('going_in_cap');
+  if(gn('irr_levered_5') != null) topLevel.irr_levered_5  = gn('irr_levered_5');
+  if(gn('moic_5')        != null) topLevel.moic_5         = gn('moic_5');
+  if(gn('coc_1')         != null) topLevel.coc_1          = gn('coc_1');
+
+  // raw_data nested patches
+  if(gn('size_sf')   != null) r.property.size_sf       = gn('size_sf');
+  if(gn('occupancy') != null) r.property.occupancy     = gn('occupancy');
+  if(gn('walt')      != null) r.property.walt          = gn('walt');
+  if(gn('vintage')   != null) r.property.vintage       = gn('vintage');
+  if(g('anchor'))             r.property.anchor_tenant = g('anchor');
+  if(gn('noi_y1')    != null){ if(!Array.isArray(r.cash_flows.noi)) r.cash_flows.noi=[]; r.cash_flows.noi[0]=gn('noi_y1'); }
+  if(gn('purchase_price') != null) r.sources_uses.purchase_price = gn('purchase_price');
+  if(gn('going_in_cap')   != null) r.returns.going_in_cap        = gn('going_in_cap');
+  if(gn('irr_levered_5')  != null) r.returns.irr_levered_5       = gn('irr_levered_5');
+  if(gn('moic_5')         != null) r.returns.moic_5              = gn('moic_5');
+  if(gn('coc_1')          != null) r.returns.coc_1               = gn('coc_1');
+  if(gn('debt_yield')     != null) r.capital_sources.debt_yield  = gn('debt_yield');
+  if(g('market_name'))             r.market.name                 = g('market_name');
+
+  const payload = {...topLevel, raw_data: r};
+
+  try{
+    const url = getSbUrl(); const key = getSbKey();
+    const resp = await fetch(`${url}/rest/v1/${DEALS_TABLE}?id=eq.${encodeURIComponent(currentDealId)}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'return=minimal'},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    // Update local cache
+    const idx = allDeals.findIndex(d=>String(d.id)===String(currentDealId));
+    if(idx>=0){ allDeals[idx] = {...allDeals[idx], ...topLevel, raw_data: r}; }
+
+    status.style.color = 'var(--green)';
+    status.textContent = '✓ Saved';
+    btn.disabled = false;
+
+    // Refresh pipeline table in background
+    renderDeals(allDeals);
+
+    // Reload modal view to reflect changes
+    setTimeout(()=>{ openDeal(currentDealId); }, 800);
+  }catch(e){
+    status.style.color = 'var(--red)';
+    status.textContent = '✕ Error: '+e.message;
+    btn.disabled = false;
+  }
 }
 
 function closeModal(){ document.getElementById('deal-modal').classList.remove('open'); currentDealId=null; }
