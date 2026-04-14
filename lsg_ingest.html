@@ -2385,6 +2385,7 @@ function renderCompare(){
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function getToolUrl(filename){const base=window.location.href.substring(0,window.location.href.lastIndexOf('/')+1);return base+filename;}
 // Parse dollar/M strings like "$65.5M", "$65,500,000", or plain numbers → raw number
 function parseAmt(v){ const s=String(v||'').trim(); const n=parseFloat(s.replace(/[$,]/g,'')); if(isNaN(n)) return null; return (s.toUpperCase().includes('M')&&n<10000)?n*1e6:n; }
 // Parse percent strings like "8.5%", "8.5", or "0.085" (if ≤1.5 treated as decimal) → percentage number
